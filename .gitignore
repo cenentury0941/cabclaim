@@ -1,0 +1,42 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Secrets / auth (never commit)
+*Cookie*.txt
+*.cookie
+.env
+.env.*
+
+# Runtime / local data
+Activities.json
+workspace/
+rapido_ingest/
+output.pdf
+*.pdf
+
+# Keep folder placeholders if needed later
+!rapido_ingest/.gitkeep
+!workspace/.gitkeep
