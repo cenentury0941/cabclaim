@@ -1,60 +1,14 @@
 import json
 import time
+from pathlib import Path
+
 import requests
 
-# Calculate timestamps (last 65 days)
-end_time_ms = int(time.time() * 1000)
-start_time_ms = end_time_ms - (65 * 24 * 60 * 60 * 1000)
+COOKIE_FILE = "Uber_Cookie.txt"
+OUTPUT_FILE = "workspace/Activities.json"
+LOOKBACK_DAYS = 65
 
-session = requests.Session()
-
-session.headers.update({
-    "accept": "*/*",
-    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-    "content-type": "application/json",
-    "priority": "u=1, i",
-    "sec-ch-prefers-color-scheme": "dark",
-    "sec-ch-ua": '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "x-csrf-token": "YOUR_CSRF_TOKEN",
-    "x-uber-rv-session-type": "desktop_session",
-    "referer": (
-        f"https://riders.uber.com/trips"
-        f"?from={start_time_ms}"
-        f"&to={end_time_ms}"
-        f"&profile=BUSINESS"
-    ),
-})
-
-# Load cookies from Uber_Cookie.txt
-with open("Uber_Cookie.txt", "r", encoding="utf-8") as f:
-    cookie_header = f.read().strip()
-
-# Parse "name=value; name2=value2; ..."
-for cookie in cookie_header.split(";"):
-    if "=" in cookie:
-        name, value = cookie.strip().split("=", 1)
-        session.cookies.set(name, value)
-
-payload = {
-    "operationName": "Activities",
-    "variables": {
-        "includePast": True,
-        "includeUpcoming": True,
-        "limit": 1000,
-        "orderTypes": [
-            "RIDES",
-            "TRAVEL"
-        ],
-        "profileType": "BUSINESS",
-        "startTimeMs": start_time_ms,
-        "endTimeMs": end_time_ms,
-    },
-    "query": """
+ACTIVITIES_QUERY = """
 query Activities(
   $cityID: Int,
   $endTimeMs: Float,
@@ -115,19 +69,90 @@ fragment RVWebCommonActivityFragment on RVWebCommonActivity {
   __typename
 }
 """
-}
 
-response = session.post(
-    "https://riders.uber.com/graphql",
-    json=payload,
-)
 
-print(f"Status: {response.status_code}")
+def load_cookie_header(cookie_file=COOKIE_FILE):
+    with open(cookie_file, "r", encoding="utf-8") as f:
+        return f.read().strip()
 
-response.raise_for_status()
 
-# Save the response JSON to Activities.json
-with open("Activities.json", "w", encoding="utf-8") as f:
-    json.dump(response.json(), f, indent=2, ensure_ascii=False)
+def apply_cookie_header(session, cookie_header):
+    header = cookie_header.strip()
+    if header.lower().startswith("cookie:"):
+        header = header[7:].strip()
 
-print("Saved response to Activities.json")
+    for cookie in header.split(";"):
+        if "=" in cookie:
+            name, value = cookie.strip().split("=", 1)
+            session.cookies.set(name, value)
+
+
+def main(cookie_header=None):
+    if cookie_header is None:
+        cookie_header = load_cookie_header()
+
+    end_time_ms = int(time.time() * 1000)
+    start_time_ms = end_time_ms - (LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
+
+    session = requests.Session()
+
+    session.headers.update({
+        "accept": "*/*",
+        "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+        "content-type": "application/json",
+        "priority": "u=1, i",
+        "sec-ch-prefers-color-scheme": "dark",
+        "sec-ch-ua": '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "x-csrf-token": "YOUR_CSRF_TOKEN",
+        "x-uber-rv-session-type": "desktop_session",
+        "referer": (
+            f"https://riders.uber.com/trips"
+            f"?from={start_time_ms}"
+            f"&to={end_time_ms}"
+            f"&profile=BUSINESS"
+        ),
+    })
+
+    apply_cookie_header(session, cookie_header)
+
+    payload = {
+        "operationName": "Activities",
+        "variables": {
+            "includePast": True,
+            "includeUpcoming": True,
+            "limit": 1000,
+            "orderTypes": [
+                "RIDES",
+                "TRAVEL"
+            ],
+            "profileType": "BUSINESS",
+            "startTimeMs": start_time_ms,
+            "endTimeMs": end_time_ms,
+        },
+        "query": ACTIVITIES_QUERY,
+    }
+
+    response = session.post(
+        "https://riders.uber.com/graphql",
+        json=payload,
+    )
+
+    print(f"Status: {response.status_code}")
+
+    response.raise_for_status()
+
+    Path(OUTPUT_FILE).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(response.json(), f, indent=2, ensure_ascii=False)
+
+    print(f"Saved response to {OUTPUT_FILE}")
+
+
+if __name__ == "__main__":
+    main()

@@ -8,7 +8,7 @@ from utils import pdf_contains_pin
 
 BASE_URL = "https://riders.uber.com/trips/{}/receipt?contentType=PDF"
 
-ACTIVITIES_FILE = "Activities.json"
+ACTIVITIES_FILE = "workspace/Activities.json"
 COOKIE_FILE = "Uber_Cookie.txt"
 OUTPUT_DIR = "workspace/uber_receipts"
 DELETED_DIR = "workspace/deleted_uber_receipts"

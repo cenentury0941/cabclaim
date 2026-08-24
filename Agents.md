@@ -10,7 +10,7 @@ Local Python tooling to pull Uber/Rapido ride receipts, filter them, optimize un
 
 **Remote:** https://github.com/cenentury0941/cabclaim.git  
 
-**Do not commit:** cookie files (`*Cookie*.txt`), `Activities.json`, `venv/`, `workspace/`, `rapido_ingest/`, PDFs (see `.gitignore`).
+**Do not commit:** cookie files (`*Cookie*.txt`), `Activities.json` / `workspace/`, `venv/`, `rapido_ingest/`, PDFs (see `.gitignore`).
 
 ---
 
@@ -18,7 +18,7 @@ Local Python tooling to pull Uber/Rapido ride receipts, filter them, optimize un
 
 | Step | Script | Role |
 |------|--------|------|
-| 1 | `get_activities.py` | Fetch Uber trip activities → `Activities.json` |
+| 1 | `get_activities.py` | Fetch Uber trip activities → `workspace/Activities.json` |
 | 2 | `get_uber_receipts.py` | Download Uber PDFs; filter by month + PIN |
 | 3 | `ingest_rapido_receipts.py` | Sort Rapido PDFs by PIN into keep/delete folders |
 | 4 | `optimize_receipts.py` | Keep best receipt subset under `MAX_AMOUNT` |
@@ -40,36 +40,50 @@ Shared helpers: `utils.py`. Config today is mostly **module-level constants** (p
 | `get_uber_receipts.py` | Already has `main()` — OK |
 | `optimize_receipts.py` | Already has `main()` — OK |
 | `ingest_rapido_receipts.py` | Has `main()`, but `mkdir` runs at import — move into `main()` |
-| `get_activities.py` | Entire body is top-level — wrap in `main()` + `__main__` guard |
+| `get_activities.py` | Done — `main(cookie_header=None)`; writes `workspace/Activities.json`; CLI loads `Uber_Cookie.txt` if cookie omitted |
 | `upload_uber_to_concur.py` | Session + upload loop at module level — wrap in `main()` |
 | `upload_rapido_to_concur.py` | Same as Uber upload |
 | `upload_test.py` | Same pattern — wrap in `main()` if kept |
 
 Keep defaults for CLI use; avoid rewriting business logic.
 
-### 2. Multi-screen GUI
+### 2. Multi-screen web UI
 
-**Goal:** A desktop GUI that walks through multiple screens. Each screen collects params for one script and runs it.
+**Goal:** A local web UI that walks through multiple screens. Each screen collects params for one script and runs it.
 
 **Constraints:**
 - Do **not** rewrite script logic.
-- Only change how config variables are initialized so they can take values from the GUI (e.g. optional `main(**kwargs)` overrides, or set module attrs then call `main()`).
-- Long work must run off the UI thread; capture `print` output into a log panel.
+- Only change how config variables are initialized so they can take values from the UI (e.g. optional `main(**kwargs)` overrides).
+- Capture `print` output into an on-page log (`web.runner.run_captured`).
 
-**Suggested stack:** `customtkinter` or stdlib `tkinter` with a page stack.
+**Stack (in place):** [Streamlit](https://streamlit.io/) (local browser UI).
 
-**Suggested screens ↔ params:**
+**Run (from repo root, with venv):**
+```bash
+./venv/bin/streamlit run app.py
+```
+Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
 
-1. **Activities** — cookie path, CSRF token, lookback days, profile  
-2. **Uber receipts** — month, PIN, cookie/activities paths  
-3. **Rapido ingest** — PIN, ingest/keep/delete folders  
-4. **Optimize** — `MAX_AMOUNT`, receipt dirs  
+**Layout:**
+- `app.py` — home page (includes **Clear workspace**)
+- `pages/` — one Streamlit page module per script screen (sidebar auto-lists them)
+- `web/runner.py` — stdout/stderr capture helper
+- `web/workspace.py` — clear `workspace/` contents
+
+**Screens done:**
+- **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes `workspace/`)
+- **Get Activities** (`pages/1_Get_Activities.py`) — configurable **Cookie Header**; runs `get_activities.main(cookie_header=...)`; saves `workspace/Activities.json`; optional load from `Uber_Cookie.txt`
+
+**Screens still to add (one at a time as specified):**
+
+1. ~~**Activities**~~ → done (Cookie Header only)  
+2. **Uber receipts** — month, PIN, cookie/activities paths → `get_uber_receipts.py`  
+3. **Rapido ingest** — PIN, ingest/keep/delete folders → `ingest_rapido_receipts.py`  
+4. **Optimize** — `MAX_AMOUNT`, receipt dirs → `optimize_receipts.py`  
 5. **Upload Uber** — `REPORT_ID`, `USER_ID`, Concur cookie, purpose, PDF folder  
 6. **Upload Rapido** — same family of Concur fields  
 
-Shared wizard state (PIN, cookies, report id) should carry across steps.
-
-**Suggested layout:** `app.py` + `pages/` + `runner.py` (worker thread + stdout redirect).
+Shared values: `st.session_state` (e.g. `uber_cookie_header`).
 
 ### 3. Agents.md maintenance (ongoing)
 
@@ -83,11 +97,14 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Added `.gitignore` (secrets, venv, workspace data, PDFs)
 - [x] Pushed initial source to `cenentury0941/cabclaim`
 - [x] Removed unfinished parent `PycharmProjects/.git` that was polluting Source Control
+- [x] Replaced tkinter GUI with Streamlit web UI (`app.py` + `pages/` + `web/runner.py`)
+- [x] Get Activities screen (Cookie Header) + `get_activities.main(cookie_header=...)`
 
 ---
 
 ## Working agreements
 
-- Prefer minimal diffs to existing scripts until the GUI needs param injection.
+- Prefer minimal diffs to existing scripts until the UI needs param injection.
 - Never commit cookies or live activity dumps.
+- Keep the web UI local-only when handling cookie headers.
 - After finishing a pending item: check it off here, move notes to “Done” if useful, and refresh remaining pending scope.
