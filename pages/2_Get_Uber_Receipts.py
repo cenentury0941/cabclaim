@@ -8,7 +8,7 @@ import streamlit as st
 
 import get_uber_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
-from web.runner import run_captured
+from web.runner import run_streaming
 
 st.set_page_config(page_title="Get Uber Receipts — CabClaim", layout="wide")
 st.title("Get Uber Receipts")
@@ -55,6 +55,27 @@ if not activities_path.is_file():
 
 run_clicked = st.button("Run", type="primary")
 
+progress_slot = st.empty()
+status_slot = st.empty()
+log_slot = st.empty()
+live_list_slot = st.empty()
+
+
+def _render_live_receipts(highlight: str | None = None) -> None:
+    pdfs = list_pdfs(get_uber_receipts.OUTPUT_DIR)
+    with live_list_slot.container():
+        st.markdown("**Receipts (live)**")
+        if not pdfs:
+            st.caption("Waiting for downloads…")
+            return
+        for path in pdfs:
+            label = path.name
+            if highlight and path.name == highlight:
+                st.markdown(f"- **{label}** ← saved")
+            else:
+                st.markdown(f"- {label}")
+
+
 if run_clicked:
     cookie_header = (st.session_state.get("uber_cookie_header") or "").strip() or None
     if cookie_header is None and not Path(get_uber_receipts.COOKIE_FILE).is_file():
@@ -65,21 +86,68 @@ if run_clicked:
     elif not activities_path.is_file():
         st.error(f"Missing `{activities_path}`.")
     else:
-        with st.spinner("Downloading and filtering Uber receipts…"):
-            ok, log = run_captured(
-                lambda: get_uber_receipts.main(
-                    target_month=month,
-                    target_pin=int(pin),
-                    cookie_header=cookie_header,
-                ),
-                label="Get Uber Receipts",
-            )
-        st.subheader("Log")
-        st.code(log or "(no output)", language="text")
+        progress_slot.progress(0, text="Starting…")
+        status_slot.info("Downloading Uber receipts…")
+        _render_live_receipts()
+
+        def on_output(text: str) -> None:
+            log_slot.code(text or "(no output)", language="text")
+
+        def on_progress(event: dict) -> None:
+            phase = event.get("phase")
+            index = int(event.get("index") or 0)
+            total = int(event.get("total") or 0)
+            path = event.get("path")
+
+            if phase == "start":
+                progress_slot.progress(
+                    0,
+                    text=f"Found {total} trip(s) — starting download…",
+                )
+                status_slot.info(f"Downloading 0 / {total}…")
+            elif phase == "download":
+                frac = (index / total) if total else 1.0
+                name = Path(path).name if path else "(not saved)"
+                progress_slot.progress(
+                    min(frac, 1.0),
+                    text=f"Download {index} / {total}: {name}",
+                )
+                status_slot.info(f"Downloading {index} / {total}…")
+                _render_live_receipts(highlight=Path(path).name if path else None)
+            elif phase == "filter":
+                frac = (index / total) if total else 1.0
+                kept = event.get("kept")
+                filename = event.get("filename") or ""
+                action = "kept" if kept else "removed"
+                progress_slot.progress(
+                    min(frac, 1.0),
+                    text=f"Filter {index} / {total}: {filename} ({action})",
+                )
+                status_slot.info(f"Filtering by pincode… {index} / {total}")
+                _render_live_receipts()
+            elif phase == "done":
+                progress_slot.progress(1.0, text="Complete")
+                _render_live_receipts()
+
+        ok, log = run_streaming(
+            lambda: get_uber_receipts.main(
+                target_month=month,
+                target_pin=int(pin),
+                cookie_header=cookie_header,
+                on_progress=on_progress,
+            ),
+            label="Get Uber Receipts",
+            on_output=on_output,
+        )
+
+        log_slot.code(log or "(no output)", language="text")
         if ok:
-            st.success(f"Done — receipts in `{get_uber_receipts.OUTPUT_DIR}`.")
+            status_slot.success(
+                f"Done — receipts in `{get_uber_receipts.OUTPUT_DIR}`."
+            )
+            progress_slot.progress(1.0, text="Complete")
         else:
-            st.error("Run failed — see log above.")
+            status_slot.error("Run failed — see log above.")
 
 st.divider()
 st.subheader("Downloaded receipts")

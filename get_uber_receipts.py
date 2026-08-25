@@ -45,7 +45,12 @@ def load_cookies(cookie_file):
         return load_cookies_from_header(f.read())
 
 
-def filter_receipts_by_pin(target_pin, output_dir=OUTPUT_DIR, deleted_dir=DELETED_DIR):
+def filter_receipts_by_pin(
+    target_pin,
+    output_dir=OUTPUT_DIR,
+    deleted_dir=DELETED_DIR,
+    on_progress=None,
+):
     """Move uber_receipts that do not contain the target PIN to deleted_dir."""
     print(f"\nFiltering uber_receipts for PIN {target_pin}...\n")
 
@@ -53,21 +58,38 @@ def filter_receipts_by_pin(target_pin, output_dir=OUTPUT_DIR, deleted_dir=DELETE
 
     kept = 0
     deleted = 0
+    pdf_names = [f for f in os.listdir(output_dir) if f.lower().endswith(".pdf")]
+    total = len(pdf_names)
 
-    for filename in os.listdir(output_dir):
-        if not filename.lower().endswith(".pdf"):
-            continue
-
+    for index, filename in enumerate(pdf_names, start=1):
         filepath = os.path.join(output_dir, filename)
         delete_path = os.path.join(deleted_dir, filename)
 
         if pdf_contains_pin(filepath, str(target_pin)):
             print(f"✓ Keeping {filename}")
             kept += 1
+            if on_progress:
+                on_progress({
+                    "phase": "filter",
+                    "index": index,
+                    "total": total,
+                    "path": filepath,
+                    "kept": True,
+                    "filename": filename,
+                })
         else:
             shutil.move(filepath, delete_path)
             print(f"✗ Deleted {filename}")
             deleted += 1
+            if on_progress:
+                on_progress({
+                    "phase": "filter",
+                    "index": index,
+                    "total": total,
+                    "path": None,
+                    "kept": False,
+                    "filename": filename,
+                })
 
     print("\nFiltering complete.")
     print(f"Kept: {kept}")
@@ -81,6 +103,7 @@ def main(
     activities_file=None,
     output_dir=None,
     deleted_dir=None,
+    on_progress=None,
 ):
     month = target_month or TARGET_MONTH
     pin = str(target_pin if target_pin is not None else TARGET_PIN)
@@ -120,7 +143,16 @@ def main(
         and not a.get("description", "").startswith("₹0.00")
     ]
 
-    print(f"Found {len(activities)} matching trips for {month}.\n")
+    total = len(activities)
+    print(f"Found {total} matching trips for {month}.\n")
+
+    if on_progress:
+        on_progress({
+            "phase": "start",
+            "index": 0,
+            "total": total,
+            "path": None,
+        })
 
     for index, activity in enumerate(activities, start=1):
         trip_uuid = activity["uuid"]
@@ -130,10 +162,11 @@ def main(
 
         url = BASE_URL.format(trip_uuid)
 
-        print(f"[{index}/{len(activities)}] {subtitle}")
+        print(f"[{index}/{total}] {subtitle}")
         print(f"    {title}")
         print(f"    {amount}")
 
+        saved_path = None
         try:
             response = session.get(url, timeout=30)
 
@@ -141,15 +174,15 @@ def main(
                 response.status_code == 200
                 and response.headers.get("Content-Type", "").startswith("application/pdf")
             ):
-                filename = os.path.join(
+                saved_path = os.path.join(
                     out_dir,
                     f"{subtitle.replace(' • ', '_')}_{trip_uuid}.pdf"
                 )
 
-                with open(filename, "wb") as pdf:
+                with open(saved_path, "wb") as pdf:
                     pdf.write(response.content)
 
-                print(f"    ✓ Saved: {filename}")
+                print(f"    ✓ Saved: {saved_path}")
 
             else:
                 print(
@@ -164,7 +197,29 @@ def main(
 
         print()
 
-    filter_receipts_by_pin(pin, output_dir=out_dir, deleted_dir=del_dir)
+        if on_progress:
+            on_progress({
+                "phase": "download",
+                "index": index,
+                "total": total,
+                "path": saved_path,
+                "subtitle": subtitle,
+            })
+
+    filter_receipts_by_pin(
+        pin,
+        output_dir=out_dir,
+        deleted_dir=del_dir,
+        on_progress=on_progress,
+    )
+
+    if on_progress:
+        on_progress({
+            "phase": "done",
+            "index": total,
+            "total": total,
+            "path": None,
+        })
 
 
 if __name__ == "__main__":
