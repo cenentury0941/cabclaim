@@ -37,7 +37,7 @@ Shared helpers: `utils.py`. Config today is mostly **module-level constants** (p
 
 | Script | Status / needed change |
 |--------|-------------------------|
-| `get_uber_receipts.py` | Already has `main()` — OK |
+| `get_uber_receipts.py` | Done — `main(target_month=..., target_pin=..., cookie_header=...)`; reads `workspace/Activities.json` |
 | `optimize_receipts.py` | Already has `main()` — OK |
 | `ingest_rapido_receipts.py` | Has `main()`, but `mkdir` runs at import — move into `main()` |
 | `get_activities.py` | Done — `main(cookie_header=None)`; writes `workspace/Activities.json`; CLI loads `Uber_Cookie.txt` if cookie omitted |
@@ -73,17 +73,18 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
 **Screens done:**
 - **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes `workspace/`)
 - **Get Activities** (`pages/1_Get_Activities.py`) — configurable **Cookie Header**; runs `get_activities.main(cookie_header=...)`; saves `workspace/Activities.json`; optional load from `Uber_Cookie.txt`
+- **Get Uber Receipts** (`pages/2_Get_Uber_Receipts.py`) — **Month** dropdown, **Pincode** number field; runs `get_uber_receipts.main(...)`; lists PDFs in `workspace/uber_receipts` with in-page preview (click/select item)
 
 **Screens still to add (one at a time as specified):**
 
 1. ~~**Activities**~~ → done (Cookie Header only)  
-2. **Uber receipts** — month, PIN, cookie/activities paths → `get_uber_receipts.py`  
+2. ~~**Uber receipts**~~ → done (Month, Pincode, PDF list + preview)  
 3. **Rapido ingest** — PIN, ingest/keep/delete folders → `ingest_rapido_receipts.py`  
 4. **Optimize** — `MAX_AMOUNT`, receipt dirs → `optimize_receipts.py`  
 5. **Upload Uber** — `REPORT_ID`, `USER_ID`, Concur cookie, purpose, PDF folder  
 6. **Upload Rapido** — same family of Concur fields  
 
-Shared values: `st.session_state` (e.g. `uber_cookie_header`).
+Shared values: `st.session_state` (e.g. `uber_cookie_header`, `uber_receipt_month`, `uber_receipt_pin`).
 
 ### 3. Agents.md maintenance (ongoing)
 
@@ -99,6 +100,7 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Removed unfinished parent `PycharmProjects/.git` that was polluting Source Control
 - [x] Replaced tkinter GUI with Streamlit web UI (`app.py` + `pages/` + `web/runner.py`)
 - [x] Get Activities screen (Cookie Header) + `get_activities.main(cookie_header=...)`
+- [x] Get Uber Receipts screen (Month, Pincode, PDF list + preview)
 
 ---
 

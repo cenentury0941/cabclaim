@@ -1,7 +1,6 @@
 import json
 import os
 import requests
-import pymupdf
 import shutil
 
 from utils import pdf_contains_pin
@@ -19,13 +18,15 @@ TARGET_MONTH = "Jul"
 # Change to the PIN you want to keep. Defaults to 600032 (Ekkatuthangal)
 TARGET_PIN = "600032"
 
+MONTHS = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
 
-def load_cookies(cookie_file):
-    """Load cookies from a Uber_Cookie.txt file."""
-    with open(cookie_file, "r", encoding="utf-8") as f:
-        cookie_string = f.read().strip()
 
-    # Remove "Cookie:" prefix if present
+def load_cookies_from_header(cookie_header):
+    """Parse a Cookie header string into a dict."""
+    cookie_string = cookie_header.strip()
     if cookie_string.lower().startswith("cookie:"):
         cookie_string = cookie_string[7:].strip()
 
@@ -38,21 +39,29 @@ def load_cookies(cookie_file):
     return cookies
 
 
-def filter_receipts_by_pin():
-    """Delete uber_receipts that do not contain the target PIN."""
-    print(f"\nFiltering uber_receipts for PIN {TARGET_PIN}...\n")
+def load_cookies(cookie_file):
+    """Load cookies from a Uber_Cookie.txt file."""
+    with open(cookie_file, "r", encoding="utf-8") as f:
+        return load_cookies_from_header(f.read())
+
+
+def filter_receipts_by_pin(target_pin, output_dir=OUTPUT_DIR, deleted_dir=DELETED_DIR):
+    """Move uber_receipts that do not contain the target PIN to deleted_dir."""
+    print(f"\nFiltering uber_receipts for PIN {target_pin}...\n")
+
+    os.makedirs(deleted_dir, exist_ok=True)
 
     kept = 0
     deleted = 0
 
-    for filename in os.listdir(OUTPUT_DIR):
+    for filename in os.listdir(output_dir):
         if not filename.lower().endswith(".pdf"):
             continue
 
-        filepath = os.path.join(OUTPUT_DIR, filename)
-        delete_path = os.path.join(DELETED_DIR, filename)
+        filepath = os.path.join(output_dir, filename)
+        delete_path = os.path.join(deleted_dir, filename)
 
-        if pdf_contains_pin(filepath, TARGET_PIN):
+        if pdf_contains_pin(filepath, str(target_pin)):
             print(f"✓ Keeping {filename}")
             kept += 1
         else:
@@ -65,15 +74,31 @@ def filter_receipts_by_pin():
     print(f"Deleted: {deleted}")
 
 
-def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    os.makedirs(DELETED_DIR, exist_ok=True)
+def main(
+    target_month=None,
+    target_pin=None,
+    cookie_header=None,
+    activities_file=None,
+    output_dir=None,
+    deleted_dir=None,
+):
+    month = target_month or TARGET_MONTH
+    pin = str(target_pin if target_pin is not None else TARGET_PIN)
+    activities_path = activities_file or ACTIVITIES_FILE
+    out_dir = output_dir or OUTPUT_DIR
+    del_dir = deleted_dir or DELETED_DIR
 
-    with open(ACTIVITIES_FILE, "r", encoding="utf-8") as f:
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(del_dir, exist_ok=True)
+
+    with open(activities_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     session = requests.Session()
-    session.cookies.update(load_cookies(COOKIE_FILE))
+    if cookie_header is not None:
+        session.cookies.update(load_cookies_from_header(cookie_header))
+    else:
+        session.cookies.update(load_cookies(COOKIE_FILE))
 
     # Browser-like headers
     session.headers.update({
@@ -91,11 +116,11 @@ def main():
     # Filter by month and ignore ₹0.00 / cancelled trips
     activities = [
         a for a in activities
-        if TARGET_MONTH.lower() in a.get("subtitle", "").lower()
+        if month.lower() in a.get("subtitle", "").lower()
         and not a.get("description", "").startswith("₹0.00")
     ]
 
-    print(f"Found {len(activities)} matching trips for {TARGET_MONTH}.\n")
+    print(f"Found {len(activities)} matching trips for {month}.\n")
 
     for index, activity in enumerate(activities, start=1):
         trip_uuid = activity["uuid"]
@@ -117,7 +142,7 @@ def main():
                 and response.headers.get("Content-Type", "").startswith("application/pdf")
             ):
                 filename = os.path.join(
-                    OUTPUT_DIR,
+                    out_dir,
                     f"{subtitle.replace(' • ', '_')}_{trip_uuid}.pdf"
                 )
 
@@ -139,7 +164,7 @@ def main():
 
         print()
 
-    filter_receipts_by_pin()
+    filter_receipts_by_pin(pin, output_dir=out_dir, deleted_dir=del_dir)
 
 
 if __name__ == "__main__":
