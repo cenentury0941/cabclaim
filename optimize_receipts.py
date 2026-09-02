@@ -70,11 +70,11 @@ def find_best_subset(receipts, limit):
     return kept, moved, Decimal(best_sum) / 100
 
 
-def move_receipt(receipt):
+def move_receipt(receipt, *, uber_overlimit_dir, rapido_overlimit_dir):
     if receipt["provider"] == "uber":
-        destination_dir = UBER_OVERLIMIT_DIR
+        destination_dir = uber_overlimit_dir
     else:
-        destination_dir = RAPIDO_OVERLIMIT_DIR
+        destination_dir = rapido_overlimit_dir
 
     destination_dir.mkdir(parents=True, exist_ok=True)
 
@@ -82,12 +82,24 @@ def move_receipt(receipt):
     shutil.move(str(receipt["path"]), str(destination))
 
 
-def main():
+def main(
+    max_amount=None,
+    uber_dir=None,
+    rapido_dir=None,
+    uber_overlimit_dir=None,
+    rapido_overlimit_dir=None,
+):
+    limit = Decimal(str(max_amount)) if max_amount is not None else MAX_AMOUNT
+    uber = Path(uber_dir or UBER_DIR)
+    rapido = Path(rapido_dir or RAPIDO_DIR)
+    uber_over = Path(uber_overlimit_dir or UBER_OVERLIMIT_DIR)
+    rapido_over = Path(rapido_overlimit_dir or RAPIDO_OVERLIMIT_DIR)
+
     receipts = []
 
     receipts.extend(
         load_receipts(
-            UBER_DIR,
+            uber,
             get_fare_amount_uber,
             "uber",
         )
@@ -95,16 +107,24 @@ def main():
 
     receipts.extend(
         load_receipts(
-            RAPIDO_DIR,
+            rapido,
             get_fare_amount_rapido,
             "rapido",
         )
     )
 
-    kept, moved, total = find_best_subset(receipts, MAX_AMOUNT)
+    if not receipts:
+        print("No receipt PDFs found in the configured folders.")
+        return
+
+    kept, moved, total = find_best_subset(receipts, limit)
 
     for receipt in moved:
-        move_receipt(receipt)
+        move_receipt(
+            receipt,
+            uber_overlimit_dir=uber_over,
+            rapido_overlimit_dir=rapido_over,
+        )
 
     uber_kept = sum(1 for r in kept if r["provider"] == "uber")
     rapido_kept = sum(1 for r in kept if r["provider"] == "rapido")
@@ -113,7 +133,7 @@ def main():
     rapido_moved = sum(1 for r in moved if r["provider"] == "rapido")
 
     print("\n========== RESULTS ==========")
-    print(f"Limit           : ₹{MAX_AMOUNT:.2f}")
+    print(f"Limit           : ₹{limit:.2f}")
     print(f"Optimal Total   : ₹{total:.2f}")
     print()
 

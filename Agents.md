@@ -38,7 +38,7 @@ Shared helpers: `utils.py`. Config today is mostly **module-level constants** (p
 | Script | Status / needed change |
 |--------|-------------------------|
 | `get_uber_receipts.py` | Done — `main(..., on_progress=)`; clears `workspace/uber_receipts` before download; live UI updates; reads `workspace/Activities.json` |
-| `optimize_receipts.py` | Already has `main()` — OK |
+| `optimize_receipts.py` | Done — `main(max_amount=, uber_dir=, rapido_dir=, …)` |
 | `ingest_rapido_receipts.py` | Done — `main(pincode=, zip_source=, …)`; unpacks zip into ingest folder; mkdir in `main()` |
 | `get_activities.py` | Done — `main(cookie_header=None)`; writes `workspace/Activities.json`; CLI loads `Uber_Cookie.txt` if cookie omitted |
 | `upload_uber_to_concur.py` | Session + upload loop at module level — wrap in `main()` |
@@ -75,13 +75,14 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
 - **Get Activities** (`pages/1_Get_Activities.py`) — configurable **Cookie Header**; runs `get_activities.main(cookie_header=...)`; saves `workspace/Activities.json`; optional load from `Uber_Cookie.txt`
 - **Get Uber Receipts** (`pages/2_Get_Uber_Receipts.py`) — **Month** dropdown, **Pincode** number field; runs `get_uber_receipts.main(...)` with live progress (log + receipt list update per download); PDF preview for files in `workspace/uber_receipts`
 - **Ingest Rapido Receipts** (`pages/3_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
+- **Optimize Receipts** (`pages/4_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
 
 **Screens still to add (one at a time as specified):**
 
 1. ~~**Activities**~~ → done (Cookie Header only)  
 2. ~~**Uber receipts**~~ → done (Month, Pincode, PDF list + preview)  
 3. ~~**Rapido ingest**~~ → done (zip upload, PIN, PDF preview)  
-4. **Optimize** — `MAX_AMOUNT`, receipt dirs → `optimize_receipts.py`  
+4. ~~**Optimize**~~ → done (spend limit, PDF preview)  
 5. **Upload Uber** — `REPORT_ID`, `USER_ID`, Concur cookie, purpose, PDF folder  
 6. **Upload Rapido** — same family of Concur fields  
 
@@ -103,6 +104,7 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Get Activities screen (Cookie Header) + `get_activities.main(cookie_header=...)`
 - [x] Get Uber Receipts screen (Month, Pincode, PDF list + preview, live per-receipt UI updates)
 - [x] Ingest Rapido Receipts screen (zip upload, shared PIN, PDF preview) + `ingest_rapido_receipts.main(...)` param injection
+- [x] Optimize Receipts screen (spend limit, PDF preview) + `optimize_receipts.main(...)` param injection
 
 ---
 
