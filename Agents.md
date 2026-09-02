@@ -37,7 +37,7 @@ Shared helpers: `utils.py`. Config today is mostly **module-level constants** (p
 
 | Script | Status / needed change |
 |--------|-------------------------|
-| `get_uber_receipts.py` | Done — `main(..., on_progress=)`; live UI updates per receipt; reads `workspace/Activities.json` |
+| `get_uber_receipts.py` | Done — `main(..., on_progress=)`; clears `workspace/uber_receipts` before download; live UI updates; reads `workspace/Activities.json` |
 | `optimize_receipts.py` | Already has `main()` — OK |
 | `ingest_rapido_receipts.py` | Has `main()`, but `mkdir` runs at import — move into `main()` |
 | `get_activities.py` | Done — `main(cookie_header=None)`; writes `workspace/Activities.json`; CLI loads `Uber_Cookie.txt` if cookie omitted |

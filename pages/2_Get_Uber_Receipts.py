@@ -99,7 +99,14 @@ if run_clicked:
             total = int(event.get("total") or 0)
             path = event.get("path")
 
-            if phase == "start":
+            if phase == "cleared":
+                cleared = event.get("cleared", 0)
+                progress_slot.progress(0, text="Destination cleared — starting…")
+                status_slot.info(
+                    f"Cleared {cleared} item(s) from `{get_uber_receipts.OUTPUT_DIR}`."
+                )
+                _render_live_receipts()
+            elif phase == "start":
                 progress_slot.progress(
                     0,
                     text=f"Found {total} trip(s) — starting download…",

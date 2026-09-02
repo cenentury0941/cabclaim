@@ -45,6 +45,20 @@ def load_cookies(cookie_file):
         return load_cookies_from_header(f.read())
 
 
+def clear_folder(folder):
+    """Remove all files and subfolders inside folder. Creates folder if missing."""
+    os.makedirs(folder, exist_ok=True)
+    removed = 0
+    for name in os.listdir(folder):
+        path = os.path.join(folder, name)
+        if os.path.isdir(path) and not os.path.islink(path):
+            shutil.rmtree(path)
+        else:
+            os.unlink(path)
+        removed += 1
+    return removed
+
+
 def filter_receipts_by_pin(
     target_pin,
     output_dir=OUTPUT_DIR,
@@ -113,6 +127,17 @@ def main(
 
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(del_dir, exist_ok=True)
+
+    cleared = clear_folder(out_dir)
+    print(f"Cleared {cleared} item(s) from {out_dir}.\n")
+    if on_progress:
+        on_progress({
+            "phase": "cleared",
+            "index": 0,
+            "total": 0,
+            "path": None,
+            "cleared": cleared,
+        })
 
     with open(activities_path, "r", encoding="utf-8") as f:
         data = json.load(f)
