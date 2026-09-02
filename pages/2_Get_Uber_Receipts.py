@@ -9,6 +9,7 @@ import streamlit as st
 import get_uber_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_streaming
+from web.session_state import ensure_receipt_pin, receipt_pin_input
 
 st.set_page_config(page_title="Get Uber Receipts — CabClaim", layout="wide")
 st.title("Get Uber Receipts")
@@ -19,11 +20,7 @@ st.write(
 
 if "uber_receipt_month" not in st.session_state:
     st.session_state.uber_receipt_month = get_uber_receipts.TARGET_MONTH
-if "uber_receipt_pin" not in st.session_state:
-    try:
-        st.session_state.uber_receipt_pin = int(get_uber_receipts.TARGET_PIN)
-    except ValueError:
-        st.session_state.uber_receipt_pin = 600032
+ensure_receipt_pin(default=get_uber_receipts.TARGET_PIN)
 
 col_month, col_pin = st.columns(2)
 with col_month:
@@ -38,14 +35,7 @@ with col_month:
     st.session_state.uber_receipt_month = month
 
 with col_pin:
-    pin = st.number_input(
-        "Pincode",
-        min_value=100000,
-        max_value=999999,
-        step=1,
-        format="%d",
-        key="uber_receipt_pin",
-    )
+    pin = receipt_pin_input()
 
 activities_path = Path(get_uber_receipts.ACTIVITIES_FILE)
 if not activities_path.is_file():
