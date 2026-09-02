@@ -25,8 +25,7 @@ st.markdown(
 2. Download Uber receipts  
 3. Ingest Rapido receipts  
 4. Optimize under spend limit  
-5. Upload Uber to Concur  
-6. Upload Rapido to Concur  
+5. Upload receipts to Concur (Uber and Rapido)
 """
 )
 

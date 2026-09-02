@@ -639,14 +639,10 @@ fragment ExpenseReportDetailsFragment on ExpenseReportDetails {
 # ==========================
 # Read Cookies
 # ==========================
-
-def load_cookies(filename):
+def load_cookies_from_text(cookie_text):
     cookies = {}
 
-    with open(filename, "r", encoding="utf-8") as f:
-        cookie_text = f.read().strip()
-
-    for cookie in cookie_text.split(";"):
+    for cookie in cookie_text.strip().split(";"):
         if "=" in cookie:
             name, value = cookie.strip().split("=", 1)
             cookies[name] = value
@@ -654,165 +650,191 @@ def load_cookies(filename):
     return cookies
 
 
-session = requests.Session()
-session.cookies.update(load_cookies(COOKIE_FILE))
+def load_cookies(filename):
+    with open(filename, "r", encoding="utf-8") as f:
+        return load_cookies_from_text(f.read())
 
-# ==========================
-# Upload Receipt
-# ==========================
 
-headers = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "*/*",
-    "Accept-Language": "en,en-US;q=0.9",
-    "Priority": "u=4",
-}
+def main(
+    report_id=None,
+    user_id=None,
+    cookie_header=None,
+    cookie_file=None,
+    business_purpose=None,
+    vendor_name=None,
+    pdf_folder=None,
+):
+    report_id = report_id or REPORT_ID
+    user_id = user_id or USER_ID
+    business_purpose = business_purpose or BUSINESS_PURPOSE
+    vendor_name = vendor_name or VENDOR_NAME
+    pdf_folder = pdf_folder or PDF_FOLDER
 
-pdf_files = sorted(glob.glob(os.path.join(PDF_FOLDER, "*.pdf")))
+    if cookie_header:
+        cookies = load_cookies_from_text(cookie_header)
+    else:
+        cookies = load_cookies(cookie_file or COOKIE_FILE)
 
-if not pdf_files:
-    print("No PDF files found.")
-    exit()
+    session = requests.Session()
+    session.cookies.update(cookies)
 
-for index, pdf_path in enumerate(pdf_files, start=1):
-
-    print(f"\n[{index}/{len(pdf_files)}] Processing {os.path.basename(pdf_path)}")
-
-    # ---------------------------------------------
-    # Read values from PDF
-    # ---------------------------------------------
-    doc = pymupdf.open(pdf_path)
-
-    number_plate = get_license_uber(doc)
-    fare = get_fare_amount_uber(doc)
-    transaction_date = get_date_uber(doc)
-
-    doc.close()
-
-    print(f"Date          : {transaction_date}")
-    print(f"Fare          : {fare}")
-    print(f"Number Plate  : {number_plate}")
-
-    # ---------------------------------------------
-    # Upload receipt
-    # ---------------------------------------------
-    with open(pdf_path, "rb") as pdf:
-
-        upload = session.post(
-            UPLOAD_URL,
-            headers=headers,
-            files={
-                "file": (
-                    os.path.basename(pdf_path),
-                    pdf,
-                    "application/pdf",
-                )
-            },
-        )
-
-    try:
-        upload.raise_for_status()
-    except Exception:
-        print("Receipt upload failed.")
-        print(upload.text)
-        continue
-
-    upload_json = upload.json()
-
-    receipt_image_id = upload_json["imageId"]
-
-    print(f"Receipt Image ID : {receipt_image_id}")
-    time.sleep(DELAY_SECONDS)
-    # ---------------------------------------------
-    # Build GraphQL variables
-    # ---------------------------------------------
-    variables = {
-        "taxFields": None,
-        "shouldIncludeRpeKey": False,
-        "userId": USER_ID,
-        "contextRole": "TRAVELER",
-        "isTrexEnabled": True,
-        "reportId": REPORT_ID,
-        "fields": {
-            "expenseTypeId": "01102",
-            "custom17": {
-                "listItemId": "8A986A8C77C9DA43835822D9E7198CAA",
-                "value": "8A986A8C77C9DA43835822D9E7198CAA",
-            },
-            "transactionDate": transaction_date,
-            "businessPurpose": BUSINESS_PURPOSE,
-            "vendorName": VENDOR_NAME,
-            "locationId": "B40D3324AD004966804DDC2B2B160CCF",
-            "paymentTypeId": "COPD",
-            "transactionAmount": {
-                "value": fare,
-                "currencyCode": "INR",
-            },
-            "exchangeRate": {
-                "operation": "MULTIPLY",
-                "value": 1,
-            },
-            "taxRateLocation": "HOME",
-            "receiptTypeId": "",
-            "isExpensePartOfTravelAllowance": False,
-            "comment": "",
-            "custom1": {
-                "value": number_plate,
-            },
-            "isPersonalExpense": False,
-            "orgUnit1": {
-                "value": "F3362811FBEBAA4495F3C72ED5BA15C4",
-            },
-            "orgUnit2": {
-                "value": "084AAD620A5EFB429E759B6E4165E57B",
-            },
-            "orgUnit3": {
-                "value": "46AEE5457FA8664F9B5CFB508CF8FDA6",
-            },
-            "receiptImageId": receipt_image_id,
-        },
-        "expenseTypeId": "01102",
-        "policyId": "B94B849FD70E6F40BA689080712256F1",
-        "expenseListDetailFormId": "A6BBECA62B9240258230320AE93D100D",
-    }
-
-    payload = {
-        "operationName": "SaveNewExpenseEntry",
-        "variables": variables,
-        "query": GRAPHQL_MUTATION,
-    }
-
-    graphql_headers = {
+    headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "*/*",
-        "Accept-Language": "en",
-        "Content-Type": "application/json",
+        "Accept-Language": "en,en-US;q=0.9",
+        "Priority": "u=4",
     }
 
-    response = session.post(
-        GRAPHQL_URL,
-        headers=graphql_headers,
-        json=payload,
-    )
+    pdf_files = sorted(glob.glob(os.path.join(pdf_folder, "*.pdf")))
 
-    print("Create Expense Status:", response.status_code)
+    if not pdf_files:
+        print("No PDF files found.")
+        return
 
-    try:
-        result = response.json()
 
-        if "errors" in result:
-            print("Expense creation failed.")
-            print(json.dumps(result["errors"], indent=2))
-        else:
-            expense_id = result["data"]["createExpense"]["id"]
-            print(f"Expense created successfully: {expense_id}")
+    for index, pdf_path in enumerate(pdf_files, start=1):
 
-    except Exception:
-        print(response.text)
+        print(f"\n[{index}/{len(pdf_files)}] Processing {os.path.basename(pdf_path)}")
 
-    # ---------------------------------------------
-    # Delay before next file
-    # ---------------------------------------------
-    if index != len(pdf_files):
-        print(f"Waiting {DELAY_SECONDS} seconds...")
+        # ---------------------------------------------
+        # Read values from PDF
+        # ---------------------------------------------
+        doc = pymupdf.open(pdf_path)
+
+        number_plate = get_license_uber(doc)
+        fare = get_fare_amount_uber(doc)
+        transaction_date = get_date_uber(doc)
+
+        doc.close()
+
+        print(f"Date          : {transaction_date}")
+        print(f"Fare          : {fare}")
+        print(f"Number Plate  : {number_plate}")
+
+        # ---------------------------------------------
+        # Upload receipt
+        # ---------------------------------------------
+        with open(pdf_path, "rb") as pdf:
+
+            upload = session.post(
+                UPLOAD_URL,
+                headers=headers,
+                files={
+                    "file": (
+                        os.path.basename(pdf_path),
+                        pdf,
+                        "application/pdf",
+                    )
+                },
+            )
+
+        try:
+            upload.raise_for_status()
+        except Exception:
+            print("Receipt upload failed.")
+            print(upload.text)
+            continue
+
+        upload_json = upload.json()
+
+        receipt_image_id = upload_json["imageId"]
+
+        print(f"Receipt Image ID : {receipt_image_id}")
         time.sleep(DELAY_SECONDS)
+        # ---------------------------------------------
+        # Build GraphQL variables
+        # ---------------------------------------------
+        variables = {
+            "taxFields": None,
+            "shouldIncludeRpeKey": False,
+            "userId": user_id,
+            "contextRole": "TRAVELER",
+            "isTrexEnabled": True,
+            "reportId": report_id,
+            "fields": {
+                "expenseTypeId": "01102",
+                "custom17": {
+                    "listItemId": "8A986A8C77C9DA43835822D9E7198CAA",
+                    "value": "8A986A8C77C9DA43835822D9E7198CAA",
+                },
+                "transactionDate": transaction_date,
+                "businessPurpose": business_purpose,
+                "vendorName": vendor_name,
+                "locationId": "B40D3324AD004966804DDC2B2B160CCF",
+                "paymentTypeId": "COPD",
+                "transactionAmount": {
+                    "value": fare,
+                    "currencyCode": "INR",
+                },
+                "exchangeRate": {
+                    "operation": "MULTIPLY",
+                    "value": 1,
+                },
+                "taxRateLocation": "HOME",
+                "receiptTypeId": "",
+                "isExpensePartOfTravelAllowance": False,
+                "comment": "",
+                "custom1": {
+                    "value": number_plate,
+                },
+                "isPersonalExpense": False,
+                "orgUnit1": {
+                    "value": "F3362811FBEBAA4495F3C72ED5BA15C4",
+                },
+                "orgUnit2": {
+                    "value": "084AAD620A5EFB429E759B6E4165E57B",
+                },
+                "orgUnit3": {
+                    "value": "46AEE5457FA8664F9B5CFB508CF8FDA6",
+                },
+                "receiptImageId": receipt_image_id,
+            },
+            "expenseTypeId": "01102",
+            "policyId": "B94B849FD70E6F40BA689080712256F1",
+            "expenseListDetailFormId": "A6BBECA62B9240258230320AE93D100D",
+        }
+
+        payload = {
+            "operationName": "SaveNewExpenseEntry",
+            "variables": variables,
+            "query": GRAPHQL_MUTATION,
+        }
+
+        graphql_headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "*/*",
+            "Accept-Language": "en",
+            "Content-Type": "application/json",
+        }
+
+        response = session.post(
+            GRAPHQL_URL,
+            headers=graphql_headers,
+            json=payload,
+        )
+
+        print("Create Expense Status:", response.status_code)
+
+        try:
+            result = response.json()
+
+            if "errors" in result:
+                print("Expense creation failed.")
+                print(json.dumps(result["errors"], indent=2))
+            else:
+                expense_id = result["data"]["createExpense"]["id"]
+                print(f"Expense created successfully: {expense_id}")
+
+        except Exception:
+            print(response.text)
+
+        # ---------------------------------------------
+        # Delay before next file
+        # ---------------------------------------------
+        if index != len(pdf_files):
+            print(f"Waiting {DELAY_SECONDS} seconds...")
+            time.sleep(DELAY_SECONDS)
+
+
+if __name__ == "__main__":
+    main()
