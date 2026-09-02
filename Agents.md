@@ -20,7 +20,7 @@ Local Python tooling to pull Uber/Rapido ride receipts, filter them, optimize un
 |------|--------|------|
 | 1 | `get_activities.py` | Fetch Uber trip activities → `workspace/Activities.json` |
 | 2 | `get_uber_receipts.py` | Download Uber PDFs; filter by month + PIN |
-| 3 | `ingest_rapido_receipts.py` | Unpack Rapido zip, sort PDFs by PIN into keep/delete folders |
+| 3 | `ingest_rapido_receipts.py` | Unpack Rapido zip, keep cab PDFs matching PIN |
 | 4 | `optimize_receipts.py` | Keep best receipt subset under `MAX_AMOUNT` |
 | 5 | `upload_uber_to_concur.py` | Upload Uber receipts as Concur expenses |
 | 6 | `upload_rapido_to_concur.py` | Upload Rapido receipts as Concur expenses |

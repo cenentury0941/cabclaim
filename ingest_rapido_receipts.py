@@ -15,6 +15,11 @@ KEEP_FOLDER = Path("workspace/rapido_receipts")
 DELETE_FOLDER = Path("workspace/deleted_rapido_receipts")
 
 
+def is_cab_receipt(filename: str) -> bool:
+    """Rapido cab receipts use CAB_RECEIPT_* filenames; autos use AUTO_RECEIPT_*."""
+    return Path(filename).name.upper().startswith("CAB_RECEIPT")
+
+
 def clear_ingest_folder(ingest_folder=None) -> Path:
     ingest = Path(ingest_folder or INGEST_FOLDER)
     ingest.mkdir(parents=True, exist_ok=True)
@@ -69,9 +74,17 @@ def main(
 
     kept = 0
     deleted = 0
+    skipped_non_cab = 0
 
     for pdf_file in pdf_files:
         print(f"Processing: {pdf_file.name}")
+        if not is_cab_receipt(pdf_file.name):
+            destination = delete / pdf_file.name
+            skipped_non_cab += 1
+            print("  -> Not a cab receipt. Moving to deleted_rapido_receipts.")
+            shutil.move(str(pdf_file), str(destination))
+            continue
+
         if pdf_contains_pin(str(pdf_file), pin):
             destination = keep / pdf_file.name
             kept += 1
@@ -87,6 +100,7 @@ def main(
     print("\nDone!")
     print(f"Kept: {kept}")
     print(f"Deleted: {deleted}")
+    print(f"Skipped (non-cab): {skipped_non_cab}")
     print(f"Total: {len(pdf_files)}")
 
 
