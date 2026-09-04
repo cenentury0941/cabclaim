@@ -5,8 +5,20 @@ from __future__ import annotations
 import streamlit as st
 
 RECEIPT_PIN_KEY = "receipt_pin"
+UBER_ACTIVITIES_COOKIE_KEY = "uber_activities_cookie_header"
 _DEFAULT_RECEIPT_PIN = 600032
 _LEGACY_RECEIPT_PIN_KEY = "uber_receipt_pin"
+
+
+def save_uber_activities_cookie(header: str) -> None:
+    """Store the cookie used for a successful Get Activities run."""
+    st.session_state[UBER_ACTIVITIES_COOKIE_KEY] = header.strip()
+
+
+def uber_activities_cookie() -> str | None:
+    """Cookie from the last successful Get Activities run, if any."""
+    value = (st.session_state.get(UBER_ACTIVITIES_COOKIE_KEY) or "").strip()
+    return value or None
 
 
 def ensure_receipt_pin(*, default: int | str | None = None) -> int:

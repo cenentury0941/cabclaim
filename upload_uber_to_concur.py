@@ -663,6 +663,7 @@ def main(
     business_purpose=None,
     vendor_name=None,
     pdf_folder=None,
+    on_progress=None,
 ):
     report_id = report_id or REPORT_ID
     user_id = user_id or USER_ID
@@ -691,10 +692,14 @@ def main(
         print("No PDF files found.")
         return
 
+    total = len(pdf_files)
+    if on_progress:
+        on_progress({"phase": "start", "index": 0, "total": total})
 
     for index, pdf_path in enumerate(pdf_files, start=1):
 
-        print(f"\n[{index}/{len(pdf_files)}] Processing {os.path.basename(pdf_path)}")
+        filename = os.path.basename(pdf_path)
+        print(f"\n[{index}/{total}] Processing {filename}")
 
         # ---------------------------------------------
         # Read values from PDF
@@ -710,6 +715,17 @@ def main(
         print(f"Date          : {transaction_date}")
         print(f"Fare          : {fare}")
         print(f"Number Plate  : {number_plate}")
+
+        if on_progress:
+            on_progress({
+                "phase": "processing",
+                "index": index,
+                "total": total,
+                "filename": filename,
+                "fare": fare,
+                "date": transaction_date,
+                "detail": number_plate,
+            })
 
         # ---------------------------------------------
         # Upload receipt
@@ -733,6 +749,15 @@ def main(
         except Exception:
             print("Receipt upload failed.")
             print(upload.text)
+            if on_progress:
+                on_progress({
+                    "phase": "expense",
+                    "index": index,
+                    "total": total,
+                    "filename": filename,
+                    "success": False,
+                    "expense_id": None,
+                })
             continue
 
         upload_json = upload.json()
@@ -815,6 +840,8 @@ def main(
 
         print("Create Expense Status:", response.status_code)
 
+        success = False
+        expense_id = None
         try:
             result = response.json()
 
@@ -823,17 +850,31 @@ def main(
                 print(json.dumps(result["errors"], indent=2))
             else:
                 expense_id = result["data"]["createExpense"]["id"]
+                success = True
                 print(f"Expense created successfully: {expense_id}")
 
         except Exception:
             print(response.text)
 
+        if on_progress:
+            on_progress({
+                "phase": "expense",
+                "index": index,
+                "total": total,
+                "filename": filename,
+                "success": success,
+                "expense_id": expense_id,
+            })
+
         # ---------------------------------------------
         # Delay before next file
         # ---------------------------------------------
-        if index != len(pdf_files):
+        if index != total:
             print(f"Waiting {DELAY_SECONDS} seconds...")
             time.sleep(DELAY_SECONDS)
+
+    if on_progress:
+        on_progress({"phase": "done", "index": total, "total": total})
 
 
 if __name__ == "__main__":

@@ -73,10 +73,10 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
 **Screens done:**
 - **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes `workspace/`)
 - **Get Activities** (`pages/1_Get_Activities.py`) — configurable **Cookie Header**; runs `get_activities.main(cookie_header=...)`; saves `workspace/Activities.json`; optional load from `Uber_Cookie.txt`
-- **Get Uber Receipts** (`pages/2_Get_Uber_Receipts.py`) — **Month** dropdown, **Pincode** number field; runs `get_uber_receipts.main(...)` with live progress (log + receipt list update per download); PDF preview for files in `workspace/uber_receipts`
+- **Get Uber Receipts** (`pages/2_Get_Uber_Receipts.py`) — **Month** dropdown, **Pincode** number field; uses cookie from last successful Get Activities run; runs `get_uber_receipts.main(...)` with live progress (log + receipt list update per download); PDF preview for files in `workspace/uber_receipts`
 - **Ingest Rapido Receipts** (`pages/3_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
 - **Optimize Receipts** (`pages/4_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
-- **Upload Receipts** (`pages/5_Upload_Receipts.py`) — shared Concur settings; separate **Upload Uber** and **Upload Rapido** sections
+- **Upload Receipts** (`pages/5_Upload_Receipts.py`) — shared Concur settings; separate **Upload Uber** and **Upload Rapido** sections with live per-expense progress
 
 **Screens still to add (one at a time as specified):**
 
@@ -86,7 +86,7 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
 4. ~~**Optimize**~~ → done (spend limit, PDF preview)  
 5. ~~**Upload**~~ → done (shared Concur fields; Uber + Rapido sections on one page)  
 
-Shared values: `st.session_state` (e.g. `uber_cookie_header`, `uber_receipt_month`, `receipt_pin` via `web.session_state`, `concur_*` on upload screen).
+Shared values: `st.session_state` (e.g. `uber_cookie_header`, `uber_activities_cookie_header` set on successful Get Activities, `uber_receipt_month`, `receipt_pin` via `web.session_state`, `concur_*` on upload screen).
 
 ### 3. Agents.md maintenance (ongoing)
 

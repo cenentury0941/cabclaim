@@ -8,6 +8,7 @@ import streamlit as st
 
 import get_activities
 from web.runner import run_captured
+from web.session_state import save_uber_activities_cookie
 
 st.set_page_config(page_title="Get Activities — CabClaim", layout="wide")
 st.title("Get Activities")
@@ -58,6 +59,7 @@ if run_clicked:
         st.subheader("Log")
         st.code(log or "(no output)", language="text")
         if ok:
+            save_uber_activities_cookie(header)
             st.success(f"Done — saved to `{get_activities.OUTPUT_FILE}`.")
         else:
             st.error("Run failed — see log above.")

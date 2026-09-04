@@ -9,7 +9,11 @@ import streamlit as st
 import get_uber_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_streaming
-from web.session_state import ensure_receipt_pin, receipt_pin_input
+from web.session_state import (
+    ensure_receipt_pin,
+    receipt_pin_input,
+    uber_activities_cookie,
+)
 
 st.set_page_config(page_title="Get Uber Receipts — CabClaim", layout="wide")
 st.title("Get Uber Receipts")
@@ -43,6 +47,15 @@ if not activities_path.is_file():
         f"`{activities_path}` not found. Run **Get Activities** first."
     )
 
+cookie_header = uber_activities_cookie()
+if cookie_header:
+    st.caption("Using the Uber cookie from your last successful **Get Activities** run.")
+else:
+    st.warning(
+        "No Uber cookie stored yet. Run **Get Activities** first so the same "
+        "cookie used to fetch `Activities.json` is reused here."
+    )
+
 run_clicked = st.button("Run", type="primary")
 
 progress_slot = st.empty()
@@ -67,11 +80,10 @@ def _render_live_receipts(highlight: str | None = None) -> None:
 
 
 if run_clicked:
-    cookie_header = (st.session_state.get("uber_cookie_header") or "").strip() or None
-    if cookie_header is None and not Path(get_uber_receipts.COOKIE_FILE).is_file():
+    if cookie_header is None:
         st.error(
-            "No Uber cookie available. Paste one on **Get Activities** "
-            f"or provide `{get_uber_receipts.COOKIE_FILE}`."
+            "No Uber cookie stored. Run **Get Activities** first with a valid "
+            "cookie header."
         )
     elif not activities_path.is_file():
         st.error(f"Missing `{activities_path}`.")
