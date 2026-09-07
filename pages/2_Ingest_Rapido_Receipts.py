@@ -8,10 +8,12 @@ import ingest_rapido_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured
 from web.session_state import ensure_receipt_pin, receipt_pin_input
+from web.workspace import clear_workspace_on_session_start
 
 KEEP_FOLDER = ingest_rapido_receipts.KEEP_FOLDER
 
 st.set_page_config(page_title="Ingest Rapido Receipts — CabClaim", layout="wide")
+clear_workspace_on_session_start()
 st.title("Ingest Rapido Receipts")
 st.write(
     "Upload a zip of Rapido receipt PDFs. Only cab receipts matching the pincode "

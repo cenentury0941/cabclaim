@@ -62,31 +62,30 @@ Keep defaults for CLI use; avoid rewriting business logic.
 ```bash
 ./venv/bin/streamlit run app.py
 ```
-Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`).
+Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`, `extra-streamlit-components`).
 
 **Layout:**
 - `app.py` — home page (includes **Clear workspace**)
 - `pages/` — one Streamlit page module per script screen (sidebar auto-lists them)
 - `web/runner.py` — stdout/stderr capture helper
-- `web/workspace.py` — clear `workspace/` contents
+- `web/workspace.py` — clear `workspace/` contents (manual button + once per Streamlit session on load)
+- `web/field_cookies.py` — persist Report ID / User ID text fields in browser cookies (cookie headers stay empty each session)
 
 **Screens done:**
-- **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes `workspace/`)
-- **Get Activities** (`pages/1_Get_Activities.py`) — configurable **Cookie Header**; runs `get_activities.main(cookie_header=...)`; saves `workspace/Activities.json`; optional load from `Uber_Cookie.txt`
-- **Get Uber Receipts** (`pages/2_Get_Uber_Receipts.py`) — **Month** dropdown, **Pincode** number field; uses cookie from last successful Get Activities run; runs `get_uber_receipts.main(...)` with live progress (log + receipt list update per download); PDF preview for files in `workspace/uber_receipts`
-- **Ingest Rapido Receipts** (`pages/3_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
-- **Optimize Receipts** (`pages/4_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
-- **Upload Receipts** (`pages/5_Upload_Receipts.py`) — shared Concur settings; separate **Upload Uber** and **Upload Rapido** sections with live per-expense progress
+- **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes `workspace/`); also clears `workspace/` once on Streamlit session start
+- **Get Uber Receipts** (`pages/1_Get_Uber_Receipts.py`) — **Cookie Header** (empty each session), **Month**, **Pincode**; on Run fetches activities via `get_activities.main(...)` then downloads via `get_uber_receipts.main(...)` with live progress; PDF preview for files in `workspace/uber_receipts`
+- **Ingest Rapido Receipts** (`pages/2_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
+- **Optimize Receipts** (`pages/3_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
+- **Upload Receipts** (`pages/4_Upload_Receipts.py`) — shared Concur settings (**Report ID** / **User ID** restored from browser cookies; **Cookie Header** empty each session); separate **Upload Uber** and **Upload Rapido** sections with live per-expense progress
 
 **Screens still to add (one at a time as specified):**
 
-1. ~~**Activities**~~ → done (Cookie Header only)  
-2. ~~**Uber receipts**~~ → done (Month, Pincode, PDF list + preview)  
-3. ~~**Rapido ingest**~~ → done (zip upload, PIN, PDF preview)  
-4. ~~**Optimize**~~ → done (spend limit, PDF preview)  
-5. ~~**Upload**~~ → done (shared Concur fields; Uber + Rapido sections on one page)  
+1. ~~**Activities + Uber receipts**~~ → done (merged: Cookie Header, Month, Pincode, PDF list + preview)  
+2. ~~**Rapido ingest**~~ → done (zip upload, PIN, PDF preview)  
+3. ~~**Optimize**~~ → done (spend limit, PDF preview)  
+4. ~~**Upload**~~ → done (shared Concur fields; Uber + Rapido sections on one page)  
 
-Shared values: `st.session_state` (e.g. `uber_cookie_header`, `uber_activities_cookie_header` set on successful Get Activities, `uber_receipt_month`, `receipt_pin` via `web.session_state`, `concur_*` on upload screen).
+Shared values: `st.session_state` (e.g. `uber_cookie_header`, `uber_activities_cookie_header` set after successful activities fetch on Get Uber Receipts, `uber_receipt_month`, `receipt_pin` via `web.session_state`, `concur_*` on upload screen). Concur **Report ID** / **User ID** hydrate from browser cookies via `web.field_cookies`; Uber/Concur cookie header fields stay empty at each session start.
 
 ### 3. Agents.md maintenance (ongoing)
 
@@ -101,11 +100,12 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Pushed initial source to `cenentury0941/cabclaim`
 - [x] Removed unfinished parent `PycharmProjects/.git` that was polluting Source Control
 - [x] Replaced tkinter GUI with Streamlit web UI (`app.py` + `pages/` + `web/runner.py`)
-- [x] Get Activities screen (Cookie Header) + `get_activities.main(cookie_header=...)`
-- [x] Get Uber Receipts screen (Month, Pincode, PDF list + preview, live per-receipt UI updates)
+- [x] Get Uber Receipts screen (Cookie Header + activities fetch merged in; Month, Pincode, PDF list + preview, live per-receipt UI updates)
+- [x] Removed standalone Get Activities page; renumbered remaining `pages/`
 - [x] Ingest Rapido Receipts screen (zip upload, shared PIN, PDF preview) + `ingest_rapido_receipts.main(...)` param injection
 - [x] Optimize Receipts screen (spend limit, PDF preview) + `optimize_receipts.main(...)` param injection
 - [x] Upload Receipts screen (shared Concur settings, Uber + Rapido sections) + `upload_*_to_concur.main(...)` param injection
+- [x] Cookie Header / Report ID / User ID text fields empty by default; Report ID / User ID persisted in browser cookies; cookie headers not stored across sessions
 
 ---
 

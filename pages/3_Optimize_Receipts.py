@@ -10,11 +10,13 @@ import streamlit as st
 import optimize_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured
+from web.workspace import clear_workspace_on_session_start
 
 UBER_DIR = optimize_receipts.UBER_DIR
 RAPIDO_DIR = optimize_receipts.RAPIDO_DIR
 
 st.set_page_config(page_title="Optimize Receipts — CabClaim", layout="wide")
+clear_workspace_on_session_start()
 st.title("Optimize Receipts")
 st.write(
     "Choose the largest total fare from Uber and Rapido receipts that stays under "

@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import streamlit as st
 
-from web.workspace import WORKSPACE_DIR, clear_workspace
+from web.workspace import WORKSPACE_DIR, clear_workspace, clear_workspace_on_session_start
 
 st.set_page_config(
     page_title="CabClaim",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+clear_workspace_on_session_start()
 
 st.title("CabClaim")
 st.write(
@@ -21,11 +23,10 @@ st.write(
 st.subheader("Pipeline")
 st.markdown(
     """
-1. Fetch Uber activities  
-2. Download Uber receipts  
-3. Ingest Rapido receipts  
-4. Optimize under spend limit  
-5. Upload receipts to Concur (Uber and Rapido)
+1. Fetch Uber activities & download receipts  
+2. Ingest Rapido receipts  
+3. Optimize under spend limit  
+4. Upload receipts to Concur (Uber and Rapido)
 """
 )
 
@@ -44,5 +45,5 @@ if st.button("Clear workspace", type="secondary"):
         if names:
             st.code("\n".join(names), language="text")
 
-st.info("Open **Get Activities** in the sidebar to start.")
+st.info("Open **Get Uber Receipts** in the sidebar to start.")
 st.caption("Run locally only — cookie headers stay on this machine.")

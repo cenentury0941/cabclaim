@@ -9,38 +9,43 @@ import streamlit as st
 
 import upload_rapido_to_concur
 import upload_uber_to_concur
+from web.field_cookies import hydrate_text_fields, mark_field_dirty, persist_dirty_fields
 from web.pdf_preview import list_pdfs
 from web.runner import run_streaming
+from web.session_state import ensure_ephemeral_text
+from web.workspace import clear_workspace_on_session_start
 
 UBER_FOLDER = Path(upload_uber_to_concur.PDF_FOLDER)
 RAPIDO_FOLDER = Path(upload_rapido_to_concur.PDF_FOLDER)
-CONCUR_COOKIE_FILE = upload_uber_to_concur.COOKIE_FILE
 
 st.set_page_config(page_title="Upload Receipts — CabClaim", layout="wide")
+clear_workspace_on_session_start()
 st.title("Upload Receipts")
 st.write(
     "Upload optimized receipt PDFs to Concur as expense entries. "
     "Configure shared Concur settings below, then run Uber or Rapido upload separately."
 )
 
-if "concur_report_id" not in st.session_state:
-    st.session_state.concur_report_id = upload_uber_to_concur.REPORT_ID
-if "concur_user_id" not in st.session_state:
-    st.session_state.concur_user_id = upload_uber_to_concur.USER_ID
-if "concur_cookie_header" not in st.session_state:
-    default = ""
-    path = Path(CONCUR_COOKIE_FILE)
-    if path.is_file():
-        default = path.read_text(encoding="utf-8").strip()
-    st.session_state.concur_cookie_header = default
+hydrate_text_fields("concur_report_id", "concur_user_id")
+ensure_ephemeral_text("concur_cookie_header")
 
 st.subheader("Concur settings")
 
 col_report, col_user = st.columns(2)
 with col_report:
-    st.text_input("Report ID", key="concur_report_id")
+    st.text_input(
+        "Report ID",
+        key="concur_report_id",
+        on_change=mark_field_dirty,
+        args=("concur_report_id",),
+    )
 with col_user:
-    st.text_input("User ID", key="concur_user_id")
+    st.text_input(
+        "User ID",
+        key="concur_user_id",
+        on_change=mark_field_dirty,
+        args=("concur_user_id",),
+    )
 
 st.text_area(
     "Concur Cookie Header",
@@ -48,6 +53,8 @@ st.text_area(
     height=140,
     help="Browser Cookie header for concursolutions.com",
 )
+ensure_ephemeral_text("concur_cookie_header")
+persist_dirty_fields()
 
 
 def _shared_kwargs() -> dict:

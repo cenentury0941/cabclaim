@@ -11,12 +11,12 @@ _LEGACY_RECEIPT_PIN_KEY = "uber_receipt_pin"
 
 
 def save_uber_activities_cookie(header: str) -> None:
-    """Store the cookie used for a successful Get Activities run."""
+    """Store the cookie used for a successful activities fetch on Get Uber Receipts."""
     st.session_state[UBER_ACTIVITIES_COOKIE_KEY] = header.strip()
 
 
 def uber_activities_cookie() -> str | None:
-    """Cookie from the last successful Get Activities run, if any."""
+    """Cookie from the last successful activities fetch, if any."""
     value = (st.session_state.get(UBER_ACTIVITIES_COOKIE_KEY) or "").strip()
     return value or None
 
@@ -33,6 +33,14 @@ def ensure_receipt_pin(*, default: int | str | None = None) -> int:
             except (TypeError, ValueError):
                 st.session_state[RECEIPT_PIN_KEY] = _DEFAULT_RECEIPT_PIN
     return int(st.session_state[RECEIPT_PIN_KEY])
+
+
+def ensure_ephemeral_text(session_key: str) -> None:
+    """Init a text field empty each Streamlit session; keep value across page nav."""
+    mem_key = f"_mem_{session_key}"
+    if session_key not in st.session_state:
+        st.session_state[session_key] = st.session_state.get(mem_key, "")
+    st.session_state[mem_key] = st.session_state.get(session_key) or ""
 
 
 def receipt_pin_input(**kwargs) -> int:
