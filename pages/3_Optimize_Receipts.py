@@ -10,13 +10,12 @@ import streamlit as st
 import optimize_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured
-from web.workspace import clear_workspace_on_session_start
-
-UBER_DIR = optimize_receipts.UBER_DIR
-RAPIDO_DIR = optimize_receipts.RAPIDO_DIR
+from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Optimize Receipts — CabClaim", layout="wide")
 clear_workspace_on_session_start()
+paths = workspace_paths()
+
 st.title("Optimize Receipts")
 st.write(
     "Choose the largest total fare from Uber and Rapido receipts that stays under "
@@ -34,8 +33,8 @@ max_amount = st.number_input(
     key="optimize_max_amount",
 )
 
-uber_count = len(list_pdfs(UBER_DIR))
-rapido_count = len(list_pdfs(RAPIDO_DIR))
+uber_count = len(list_pdfs(paths.uber_receipts))
+rapido_count = len(list_pdfs(paths.rapido_receipts))
 
 st.caption(
     f"Found **{uber_count}** Uber and **{rapido_count}** Rapido receipt(s) ready to optimize."
@@ -54,6 +53,10 @@ if run_clicked:
             ok, log = run_captured(
                 lambda: optimize_receipts.main(
                     max_amount=Decimal(str(max_amount)),
+                    uber_dir=paths.uber_receipts,
+                    rapido_dir=paths.rapido_receipts,
+                    uber_overlimit_dir=paths.overlimit_uber_receipts,
+                    rapido_overlimit_dir=paths.overlimit_rapido_receipts,
                 ),
                 label="Optimize Receipts",
             )
@@ -68,7 +71,10 @@ st.divider()
 st.subheader("Kept receipts")
 
 kept_pdfs: list[tuple[str, Path]] = []
-for label, folder in (("Uber", UBER_DIR), ("Rapido", RAPIDO_DIR)):
+for label, folder in (
+    ("Uber", paths.uber_receipts),
+    ("Rapido", paths.rapido_receipts),
+):
     for path in list_pdfs(folder):
         kept_pdfs.append((label, path))
 

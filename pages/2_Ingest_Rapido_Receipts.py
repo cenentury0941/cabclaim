@@ -8,12 +8,12 @@ import ingest_rapido_receipts
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured
 from web.session_state import ensure_receipt_pin, receipt_pin_input
-from web.workspace import clear_workspace_on_session_start
-
-KEEP_FOLDER = ingest_rapido_receipts.KEEP_FOLDER
+from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Ingest Rapido Receipts — CabClaim", layout="wide")
 clear_workspace_on_session_start()
+paths = workspace_paths()
+
 st.title("Ingest Rapido Receipts")
 st.write(
     "Upload a zip of Rapido receipt PDFs. Only cab receipts matching the pincode "
@@ -38,6 +38,9 @@ if run_clicked:
                 lambda: ingest_rapido_receipts.main(
                     pincode=int(pin),
                     zip_source=zip_bytes,
+                    ingest_folder=paths.rapido_ingest,
+                    keep_folder=paths.rapido_receipts,
+                    delete_folder=paths.deleted_rapido_receipts,
                 ),
                 label="Ingest Rapido Receipts",
             )
@@ -51,7 +54,7 @@ if run_clicked:
 st.divider()
 st.subheader("Kept receipts")
 
-pdfs = list_pdfs(KEEP_FOLDER)
+pdfs = list_pdfs(paths.rapido_receipts)
 if not pdfs:
     st.caption("No kept receipts yet.")
 else:
@@ -72,7 +75,7 @@ else:
         )
 
     with preview_col:
-        selected_path = KEEP_FOLDER / selected_name
+        selected_path = paths.rapido_receipts / selected_name
         st.markdown(f"**{selected_name}**")
         try:
             pages = render_pdf_pages(selected_path)

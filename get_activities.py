@@ -87,9 +87,11 @@ def apply_cookie_header(session, cookie_header):
             session.cookies.set(name, value)
 
 
-def main(cookie_header=None):
+def main(cookie_header=None, output_file=None):
     if cookie_header is None:
         cookie_header = load_cookie_header()
+
+    output_path = output_file or OUTPUT_FILE
 
     end_time_ms = int(time.time() * 1000)
     start_time_ms = end_time_ms - (LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
@@ -146,12 +148,12 @@ def main(cookie_header=None):
 
     response.raise_for_status()
 
-    Path(OUTPUT_FILE).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(response.json(), f, indent=2, ensure_ascii=False)
 
-    print(f"Saved response to {OUTPUT_FILE}")
+    print(f"Saved response to {output_path}")
 
 
 if __name__ == "__main__":

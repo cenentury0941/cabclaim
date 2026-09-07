@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from web.workspace import WORKSPACE_DIR, clear_workspace, clear_workspace_on_session_start
+from web.workspace import clear_workspace, clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(
     page_title="CabClaim",
@@ -13,6 +13,7 @@ st.set_page_config(
 )
 
 clear_workspace_on_session_start()
+paths = workspace_paths()
 
 st.title("CabClaim")
 st.write(
@@ -32,18 +33,19 @@ st.markdown(
 
 st.subheader("Workspace")
 st.write(
-    f"Runtime files live under `{WORKSPACE_DIR}/` "
-    "(activities JSON, receipt PDFs, overlimit folders, etc.)."
+    f"Runtime files for this browser live under `{paths.root}/` "
+    "(activities JSON, receipt PDFs, overlimit folders, etc.). "
+    "Each device gets its own subfolder so users on a shared host stay isolated."
 )
 
 if st.button("Clear workspace", type="secondary"):
     count, names = clear_workspace()
     if count == 0:
-        st.info(f"`{WORKSPACE_DIR}/` was already empty (or missing).")
+        st.info(f"`{paths.root}/` was already empty (or missing).")
     else:
-        st.success(f"Cleared {count} item(s) from `{WORKSPACE_DIR}/`.")
+        st.success(f"Cleared {count} item(s) from `{paths.root}/`.")
         if names:
             st.code("\n".join(names), language="text")
 
 st.info("Open **Get Uber Receipts** in the sidebar to start.")
-st.caption("Run locally only — cookie headers stay on this machine.")
+st.caption("Cookie headers stay in the browser session — do not share this UI publicly without access controls.")

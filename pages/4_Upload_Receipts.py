@@ -13,13 +13,15 @@ from web.field_cookies import hydrate_text_fields, mark_field_dirty, persist_dir
 from web.pdf_preview import list_pdfs
 from web.runner import run_streaming
 from web.session_state import ensure_ephemeral_text
-from web.workspace import clear_workspace_on_session_start
-
-UBER_FOLDER = Path(upload_uber_to_concur.PDF_FOLDER)
-RAPIDO_FOLDER = Path(upload_rapido_to_concur.PDF_FOLDER)
+from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Upload Receipts — CabClaim", layout="wide")
 clear_workspace_on_session_start()
+paths = workspace_paths()
+
+UBER_FOLDER = paths.uber_receipts
+RAPIDO_FOLDER = paths.rapido_receipts
+
 st.title("Upload Receipts")
 st.write(
     "Upload optimized receipt PDFs to Concur as expense entries. "

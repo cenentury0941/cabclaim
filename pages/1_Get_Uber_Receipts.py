@@ -16,17 +16,19 @@ from web.session_state import (
     receipt_pin_input,
     save_uber_activities_cookie,
 )
-from web.workspace import clear_workspace_on_session_start
+from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Get Uber Receipts — CabClaim", layout="wide")
 clear_workspace_on_session_start()
+paths = workspace_paths()
+
 st.title("Get Uber Receipts")
 st.write(
     "Paste the Uber Cookie header, pick a month and pincode, then run. "
     "This fetches trip activities into "
-    f"`{get_activities.OUTPUT_FILE}`, downloads receipt PDFs for the selected "
+    f"`{paths.activities}`, downloads receipt PDFs for the selected "
     f"month, keeps those matching the pincode, and previews files in "
-    f"`{get_uber_receipts.OUTPUT_DIR}`."
+    f"`{paths.uber_receipts}`."
 )
 
 ensure_ephemeral_text("uber_cookie_header")
@@ -67,7 +69,7 @@ live_list_slot = st.empty()
 
 
 def _render_live_receipts(highlight: str | None = None) -> None:
-    pdfs = list_pdfs(get_uber_receipts.OUTPUT_DIR)
+    pdfs = list_pdfs(paths.uber_receipts)
     with live_list_slot.container():
         st.markdown("**Receipts (live)**")
         if not pdfs:
@@ -89,7 +91,10 @@ if run_clicked:
         status_slot.info("Fetching Uber activities…")
         progress_slot.progress(0, text="Fetching activities…")
         ok_activities, activities_log = run_captured(
-            lambda: get_activities.main(cookie_header=header),
+            lambda: get_activities.main(
+                cookie_header=header,
+                output_file=str(paths.activities),
+            ),
             label="Get Activities",
         )
         log_slot.code(activities_log or "(no output)", language="text")
@@ -118,7 +123,7 @@ if run_clicked:
                     cleared = event.get("cleared", 0)
                     progress_slot.progress(0, text="Destination cleared — starting…")
                     status_slot.info(
-                        f"Cleared {cleared} item(s) from `{get_uber_receipts.OUTPUT_DIR}`."
+                        f"Cleared {cleared} item(s) from `{paths.uber_receipts}`."
                     )
                     _render_live_receipts()
                 elif phase == "start":
@@ -156,6 +161,9 @@ if run_clicked:
                     target_month=month,
                     target_pin=int(pin),
                     cookie_header=header,
+                    activities_file=str(paths.activities),
+                    output_dir=str(paths.uber_receipts),
+                    deleted_dir=str(paths.deleted_uber_receipts),
                     on_progress=on_progress,
                 ),
                 label="Get Uber Receipts",
@@ -166,8 +174,8 @@ if run_clicked:
 
             if ok:
                 status_slot.success(
-                    f"Done — activities in `{get_activities.OUTPUT_FILE}`, "
-                    f"receipts in `{get_uber_receipts.OUTPUT_DIR}`."
+                    f"Done — activities in `{paths.activities}`, "
+                    f"receipts in `{paths.uber_receipts}`."
                 )
                 progress_slot.progress(1.0, text="Complete")
             else:
@@ -176,9 +184,9 @@ if run_clicked:
 st.divider()
 st.subheader("Downloaded receipts")
 
-pdfs = list_pdfs(get_uber_receipts.OUTPUT_DIR)
+pdfs = list_pdfs(paths.uber_receipts)
 if not pdfs:
-    st.caption(f"No PDFs in `{get_uber_receipts.OUTPUT_DIR}` yet.")
+    st.caption(f"No PDFs in `{paths.uber_receipts}` yet.")
 else:
     names = [p.name for p in pdfs]
     if "uber_receipt_selected" not in st.session_state:
@@ -197,7 +205,7 @@ else:
         )
 
     with preview_col:
-        selected_path = Path(get_uber_receipts.OUTPUT_DIR) / selected_name
+        selected_path = paths.uber_receipts / selected_name
         st.markdown(f"**{selected_name}**")
         try:
             pages = render_pdf_pages(selected_path)
