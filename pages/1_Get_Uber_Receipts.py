@@ -8,6 +8,7 @@ import streamlit as st
 
 import get_activities
 import get_uber_receipts
+from web.page_consent import require_page_consent
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured, run_streaming
 from web.session_state import (
@@ -19,6 +20,7 @@ from web.session_state import (
 from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Get Uber Receipts — CabClaim", layout="wide")
+require_page_consent()
 clear_workspace_on_session_start()
 paths = workspace_paths()
 

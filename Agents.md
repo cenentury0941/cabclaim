@@ -70,6 +70,7 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`, `extra-streamlit-c
 - `web/runner.py` — stdout/stderr capture helper
 - `web/workspace.py` — per-device workspace under `workspace/<device_id>/` (UUID in `cc_device_id` browser cookie); clear that folder only (manual button + once per Streamlit session)
 - `web/field_cookies.py` — persist Report ID / User ID text fields in browser cookies (cookie headers stay empty each session)
+- `web/page_consent.py` — one-time, non-dismissible privacy dialog on workflow pages; acceptance persists in the `cc_page_consent` browser cookie
 
 **Device isolation (shared host):**
 - UI never reads/writes the shared `workspace/` root; all CRUD goes through `web.workspace.workspace_paths()` → `workspace/<uuid>/…`
@@ -111,8 +112,10 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Ingest Rapido Receipts screen (zip upload, shared PIN, PDF preview) + `ingest_rapido_receipts.main(...)` param injection
 - [x] Optimize Receipts screen (spend limit, PDF preview) + `optimize_receipts.main(...)` param injection
 - [x] Upload Receipts screen (shared Concur settings, Uber + Rapido sections) + `upload_*_to_concur.main(...)` param injection
+- [x] Concur uploads serialize fares as exact JSON decimal numbers with two fractional digits and no binary-float conversion
 - [x] Cookie Header / Report ID / User ID text fields empty by default; Report ID / User ID persisted in browser cookies; cookie headers not stored across sessions
 - [x] Per-device workspace isolation: `workspace/<device_id>/` keyed by browser cookie UUID; UI injects scoped paths into script `main()` calls
+- [x] One-time workflow-page privacy dialog with local illustration, Exit-to-home action, and cookie-persisted acceptance
 
 ---
 

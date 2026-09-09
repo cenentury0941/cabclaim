@@ -10,12 +10,14 @@ import streamlit as st
 import upload_rapido_to_concur
 import upload_uber_to_concur
 from web.field_cookies import hydrate_text_fields, mark_field_dirty, persist_dirty_fields
+from web.page_consent import require_page_consent
 from web.pdf_preview import list_pdfs
 from web.runner import run_streaming
 from web.session_state import ensure_ephemeral_text
 from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Upload Receipts — CabClaim", layout="wide")
+require_page_consent()
 clear_workspace_on_session_start()
 paths = workspace_paths()
 

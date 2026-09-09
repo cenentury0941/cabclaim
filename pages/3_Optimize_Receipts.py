@@ -8,11 +8,13 @@ from pathlib import Path
 import streamlit as st
 
 import optimize_receipts
+from web.page_consent import require_page_consent
 from web.pdf_preview import list_pdfs, render_pdf_pages
 from web.runner import run_captured
 from web.workspace import clear_workspace_on_session_start, workspace_paths
 
 st.set_page_config(page_title="Optimize Receipts — CabClaim", layout="wide")
+require_page_consent()
 clear_workspace_on_session_start()
 paths = workspace_paths()
 

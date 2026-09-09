@@ -4,6 +4,8 @@ import requests
 import glob
 import time
 import pymupdf
+import simplejson
+from decimal import Decimal
 
 from utils import get_license_uber, get_fare_amount_uber, get_date_uber
 
@@ -788,7 +790,7 @@ def main(
                 "locationId": "B40D3324AD004966804DDC2B2B160CCF",
                 "paymentTypeId": "COPD",
                 "transactionAmount": {
-                    "value": fare,
+                    "value": fare.quantize(Decimal("0.01")),
                     "currencyCode": "INR",
                 },
                 "exchangeRate": {
@@ -835,7 +837,7 @@ def main(
         response = session.post(
             GRAPHQL_URL,
             headers=graphql_headers,
-            json=payload,
+            data=simplejson.dumps(payload, use_decimal=True),
         )
 
         print("Create Expense Status:", response.status_code)
