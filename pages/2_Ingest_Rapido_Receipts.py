@@ -18,8 +18,8 @@ paths = workspace_paths()
 
 st.title("Ingest Rapido Receipts")
 st.write(
-    "Upload a zip of Rapido receipt PDFs. Only cab receipts matching the pincode "
-    "are kept; auto receipts and non-matching files are discarded."
+    "Upload a zip of Rapido receipt PDFs. Cab and Auto receipts matching the "
+    "pincode are kept; other files and non-matching receipts are discarded."
 )
 
 ensure_receipt_pin(default=ingest_rapido_receipts.PINCODE)

@@ -20,7 +20,7 @@ Local Python tooling to pull Uber/Rapido ride receipts, filter them, optimize un
 |------|--------|------|
 | 1 | `get_activities.py` | Fetch Uber trip activities → `workspace/Activities.json` |
 | 2 | `get_uber_receipts.py` | Download Uber PDFs; filter by month + PIN |
-| 3 | `ingest_rapido_receipts.py` | Unpack Rapido zip, keep cab PDFs matching PIN |
+| 3 | `ingest_rapido_receipts.py` | Unpack Rapido zip, keep Cab/Auto PDFs matching PIN |
 | 4 | `optimize_receipts.py` | Keep best receipt subset under `MAX_AMOUNT` |
 | 5 | `upload_uber_to_concur.py` | Upload Uber receipts as Concur expenses |
 | 6 | `upload_rapido_to_concur.py` | Upload Rapido receipts as Concur expenses |
@@ -114,6 +114,7 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Upload Receipts screen (shared Concur settings, Uber + Rapido sections) + `upload_*_to_concur.main(...)` param injection
 - [x] Concur uploads serialize fares as exact JSON decimal numbers with two fractional digits and no binary-float conversion
 - [x] Upload screen fetches Concur's new-expense form, displays the listValue ID/value for `mainForm` fields 24–26 as read-only inputs, and uses those IDs for `orgUnit1`–`orgUnit3` in both upload APIs
+- [x] Rapido ingest keeps Cab and Auto receipts (PIN-filtered); Rapido upload sets `custom17` to Auto vs Cab/Taxi from the filename
 - [x] Cookie Header / Report ID / User ID text fields empty by default; Report ID / User ID persisted in browser cookies; cookie headers not stored across sessions
 - [x] Per-device workspace isolation: `workspace/<device_id>/` keyed by browser cookie UUID; UI injects scoped paths into script `main()` calls
 - [x] One-time workflow-page privacy dialog with local illustration, Exit-to-home action, and cookie-persisted acceptance

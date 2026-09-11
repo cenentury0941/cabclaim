@@ -657,6 +657,24 @@ def load_cookies(filename):
         return load_cookies_from_text(f.read())
 
 
+# Mode of Transport (custom17) list item IDs from Concur GetNewExpenseEntry
+CUSTOM17_AUTO = {
+    "listItemId": "576E3F74E0FE0743B2F02AC345C3DB8B",
+    "value": "576E3F74E0FE0743B2F02AC345C3DB8B",
+}
+CUSTOM17_CAB = {
+    "listItemId": "8A986A8C77C9DA43835822D9E7198CAA",
+    "value": "8A986A8C77C9DA43835822D9E7198CAA",
+}
+
+
+def custom17_for_receipt(filename: str) -> dict:
+    """Auto receipts use Auto mode of transport; everything else defaults to Cab/Taxi."""
+    if os.path.basename(filename).upper().startswith("AUTO_RECEIPT"):
+        return CUSTOM17_AUTO
+    return CUSTOM17_CAB
+
+
 def main(
     report_id=None,
     user_id=None,
@@ -786,10 +804,7 @@ def main(
             "reportId": report_id,
             "fields": {
                 "expenseTypeId": "01102",
-                "custom17": {
-                    "listItemId": "8A986A8C77C9DA43835822D9E7198CAA",
-                    "value": "8A986A8C77C9DA43835822D9E7198CAA",
-                },
+                "custom17": custom17_for_receipt(filename),
                 "transactionDate": transaction_date,
                 "businessPurpose": business_purpose,
                 "vendorName": vendor_name,
