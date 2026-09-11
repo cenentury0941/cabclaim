@@ -665,6 +665,9 @@ def main(
     business_purpose=None,
     vendor_name=None,
     pdf_folder=None,
+    org_unit1_id=None,
+    org_unit2_id=None,
+    org_unit3_id=None,
     on_progress=None,
 ):
     report_id = report_id or REPORT_ID
@@ -672,6 +675,9 @@ def main(
     business_purpose = business_purpose or BUSINESS_PURPOSE
     vendor_name = vendor_name or VENDOR_NAME
     pdf_folder = pdf_folder or PDF_FOLDER
+    org_unit1_id = org_unit1_id or "F3362811FBEBAA4495F3C72ED5BA15C4"
+    org_unit2_id = org_unit2_id or "084AAD620A5EFB429E759B6E4165E57B"
+    org_unit3_id = org_unit3_id or "46AEE5457FA8664F9B5CFB508CF8FDA6"
 
     if cookie_header:
         cookies = load_cookies_from_text(cookie_header)
@@ -806,13 +812,13 @@ def main(
                 },
                 "isPersonalExpense": False,
                 "orgUnit1": {
-                    "value": "F3362811FBEBAA4495F3C72ED5BA15C4",
+                    "value": org_unit1_id,
                 },
                 "orgUnit2": {
-                    "value": "084AAD620A5EFB429E759B6E4165E57B",
+                    "value": org_unit2_id,
                 },
                 "orgUnit3": {
-                    "value": "46AEE5457FA8664F9B5CFB508CF8FDA6",
+                    "value": org_unit3_id,
                 },
                 "receiptImageId": receipt_image_id,
             },

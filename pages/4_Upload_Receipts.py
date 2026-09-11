@@ -9,6 +9,7 @@ import streamlit as st
 
 import upload_rapido_to_concur
 import upload_uber_to_concur
+from web.concur_form import fetch_main_form_list_values
 from web.field_cookies import hydrate_text_fields, mark_field_dirty, persist_dirty_fields
 from web.page_consent import require_page_consent
 from web.pdf_preview import list_pdfs
@@ -80,6 +81,74 @@ def _validate_concur_settings() -> str | None:
     return None
 
 
+def _org_unit_kwargs() -> dict[str, str]:
+    values_by_field = {
+        field["field_id"]: field["id"]
+        for field in st.session_state.get("concur_main_form_values", [])
+    }
+    return {
+        "org_unit1_id": values_by_field.get("orgUnit1", ""),
+        "org_unit2_id": values_by_field.get("orgUnit2", ""),
+        "org_unit3_id": values_by_field.get("orgUnit3", ""),
+    }
+
+
+def _validate_org_unit_values() -> str | None:
+    context = st.session_state.get("concur_main_form_context")
+    settings = _shared_kwargs()
+    if context != {
+        "report_id": settings["report_id"],
+        "user_id": settings["user_id"],
+    }:
+        return "Fetch the Concur form values for the current Report ID and User ID."
+    if not all(_org_unit_kwargs().values()):
+        return "Concur form values must include IDs for orgUnit1, orgUnit2, and orgUnit3."
+    return None
+
+
+def _render_concur_form_values() -> None:
+    st.subheader("Concur form values")
+    st.caption(
+        "Fetch the current list values for mainForm fields 24, 25, and 26."
+    )
+
+    if st.button("Fetch form values", key="fetch_concur_form_values"):
+        error = _validate_concur_settings()
+        if error:
+            st.error(error)
+        else:
+            st.session_state.pop("concur_main_form_values", None)
+            st.session_state.pop("concur_main_form_context", None)
+            try:
+                with st.spinner("Fetching form values from Concur…"):
+                    values = fetch_main_form_list_values(**_shared_kwargs())
+            except Exception as exc:
+                st.error(f"Could not fetch Concur form values: {exc}")
+            else:
+                settings = _shared_kwargs()
+                st.session_state["concur_main_form_values"] = values
+                st.session_state["concur_main_form_context"] = {
+                    "report_id": settings["report_id"],
+                    "user_id": settings["user_id"],
+                }
+                st.success("Concur form values fetched.")
+
+    for field in st.session_state.get("concur_main_form_values", []):
+        st.markdown(
+            f"**Field {field['field_index']} — {field['label']} "
+            f"(`{field['field_id']}`)**"
+        )
+        id_col, value_col = st.columns(2)
+        id_key = f"concur_form_{field['field_index']}_id"
+        value_key = f"concur_form_{field['field_index']}_value"
+        st.session_state[id_key] = field["id"]
+        st.session_state[value_key] = field["value"]
+        with id_col:
+            st.text_input("ID", key=id_key, disabled=True)
+        with value_col:
+            st.text_input("Value", key=value_key, disabled=True)
+
+
 def _render_live_expenses(
     results: list[dict],
     *,
@@ -125,6 +194,10 @@ def _run_upload_section(
         return
 
     error = _validate_concur_settings()
+    if error:
+        st.error(error)
+        return
+    error = _validate_org_unit_values()
     if error:
         st.error(error)
         return
@@ -190,6 +263,7 @@ def _run_upload_section(
     ok, log = run_streaming(
         lambda: upload_main(
             **_shared_kwargs(),
+            **_org_unit_kwargs(),
             pdf_folder=str(folder),
             on_progress=on_progress,
         ),
@@ -204,6 +278,9 @@ def _run_upload_section(
     else:
         status_slot.error(f"{label} upload failed — see log above.")
 
+
+st.divider()
+_render_concur_form_values()
 
 st.divider()
 st.subheader("Upload Uber receipts")

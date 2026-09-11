@@ -83,7 +83,7 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`, `extra-streamlit-c
 - **Get Uber Receipts** (`pages/1_Get_Uber_Receipts.py`) — **Cookie Header** (empty each session), **Month**, **Pincode**; on Run fetches activities via `get_activities.main(...)` then downloads via `get_uber_receipts.main(...)` with live progress; PDF preview for files in the device `uber_receipts` folder
 - **Ingest Rapido Receipts** (`pages/2_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
 - **Optimize Receipts** (`pages/3_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
-- **Upload Receipts** (`pages/4_Upload_Receipts.py`) — shared Concur settings (**Report ID** / **User ID** restored from browser cookies; **Cookie Header** empty each session); separate **Upload Uber** and **Upload Rapido** sections with live per-expense progress
+- **Upload Receipts** (`pages/4_Upload_Receipts.py`) — shared Concur settings (**Report ID** / **User ID** restored from browser cookies; **Cookie Header** empty each session); fetches and displays read-only list values for Concur `mainForm` fields 24–26, then injects their IDs into `orgUnit1`–`orgUnit3` during upload; separate **Upload Uber** and **Upload Rapido** sections with live per-expense progress
 
 **Screens still to add (one at a time as specified):**
 
@@ -113,6 +113,7 @@ This file’s **Pending work** (and status tables) must be updated when features
 - [x] Optimize Receipts screen (spend limit, PDF preview) + `optimize_receipts.main(...)` param injection
 - [x] Upload Receipts screen (shared Concur settings, Uber + Rapido sections) + `upload_*_to_concur.main(...)` param injection
 - [x] Concur uploads serialize fares as exact JSON decimal numbers with two fractional digits and no binary-float conversion
+- [x] Upload screen fetches Concur's new-expense form, displays the listValue ID/value for `mainForm` fields 24–26 as read-only inputs, and uses those IDs for `orgUnit1`–`orgUnit3` in both upload APIs
 - [x] Cookie Header / Report ID / User ID text fields empty by default; Report ID / User ID persisted in browser cookies; cookie headers not stored across sessions
 - [x] Per-device workspace isolation: `workspace/<device_id>/` keyed by browser cookie UUID; UI injects scoped paths into script `main()` calls
 - [x] One-time workflow-page privacy dialog with local illustration, Exit-to-home action, and cookie-persisted acceptance
