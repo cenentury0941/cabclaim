@@ -123,25 +123,29 @@ def workspace_paths() -> WorkspacePaths:
 
 def clear_workspace(workspace: Path | None = None) -> tuple[int, list[str]]:
     """
-    Delete all files and subfolders inside the given workspace directory
-    (defaults to the current device folder). Recreates an empty directory.
-    Returns (removed_entry_count, list of top-level names removed).
+    Delete the given workspace directory entirely (defaults to the current
+    device folder). Does not recreate it — callers that need paths should use
+    ``device_workspace()`` / ``workspace_paths()`` later.
+    Returns (removed_entry_count, list of top-level names that were inside).
     """
-    target = workspace if workspace is not None else device_workspace()
-    removed: list[str] = []
-
-    if target.exists():
-        for entry in sorted(target.iterdir()):
-            removed.append(entry.name)
-            if entry.is_dir():
-                shutil.rmtree(entry)
-            else:
-                entry.unlink()
+    if workspace is not None:
+        target = workspace
     else:
-        target.mkdir(parents=True, exist_ok=True)
+        # Resolve without mkdir — device_workspace() would recreate the folder.
+        target = WORKSPACE_ROOT / ensure_device_id()
+
+    if not target.exists():
         return 0, []
 
-    target.mkdir(parents=True, exist_ok=True)
+    removed: list[str] = []
+    if target.is_dir():
+        for entry in sorted(target.iterdir()):
+            removed.append(entry.name)
+        shutil.rmtree(target)
+    else:
+        removed.append(target.name)
+        target.unlink()
+
     return len(removed), removed
 
 

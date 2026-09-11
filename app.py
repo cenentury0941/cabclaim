@@ -41,9 +41,9 @@ st.write(
 if st.button("Clear workspace", type="secondary"):
     count, names = clear_workspace()
     if count == 0:
-        st.info(f"`{paths.root}/` was already empty (or missing).")
+        st.info(f"`{paths.root}/` was already empty or missing; folder removed if present.")
     else:
-        st.success(f"Cleared {count} item(s) from `{paths.root}/`.")
+        st.success(f"Removed `{paths.root}/` ({count} item(s)).")
         if names:
             st.code("\n".join(names), language="text")
 

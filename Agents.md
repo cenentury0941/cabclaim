@@ -68,7 +68,7 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`, `extra-streamlit-c
 - `app.py` — home page (includes **Clear workspace**)
 - `pages/` — one Streamlit page module per script screen (sidebar auto-lists them)
 - `web/runner.py` — stdout/stderr capture helper
-- `web/workspace.py` — per-device workspace under `workspace/<device_id>/` (UUID in `cc_device_id` browser cookie); clear that folder only (manual button + once per Streamlit session)
+- `web/workspace.py` — per-device workspace under `workspace/<device_id>/` (UUID in `cc_device_id` browser cookie); delete that folder entirely on clear (manual button + once per Streamlit session); recreate on demand
 - `web/field_cookies.py` — persist Report ID / User ID text fields in browser cookies (cookie headers stay empty each session)
 - `web/page_consent.py` — one-time, non-dismissible privacy dialog on workflow pages; acceptance persists in the `cc_page_consent` browser cookie
 
@@ -76,10 +76,10 @@ Deps: `requirements.txt` (`streamlit`, `requests`, `pymupdf`, `extra-streamlit-c
 - UI never reads/writes the shared `workspace/` root; all CRUD goes through `web.workspace.workspace_paths()` → `workspace/<uuid>/…`
 - CLI scripts still default to flat `workspace/…` paths; the UI injects device-scoped paths via `main(**kwargs)`
 - Rapido zip unpack also uses `workspace/<uuid>/rapido_ingest` (not repo-root `rapido_ingest/`) when run from the UI
-- Clear workspace / session-start wipe only the current device folder (other users' data is untouched)
+- Clear workspace / session-start wipe deletes the current device folder entirely (`workspace/<uuid>/`), not just its contents (other users' data is untouched); the folder is recreated on demand when a screen needs paths
 
 **Screens done:**
-- **Home** (`app.py`) — pipeline overview + **Clear workspace** (wipes this device's folder); also clears that folder once on Streamlit session start
+- **Home** (`app.py`) — pipeline overview + **Clear workspace** (removes this device's `workspace/<uuid>/` folder); also removes that folder once on Streamlit session start
 - **Get Uber Receipts** (`pages/1_Get_Uber_Receipts.py`) — **Cookie Header** (empty each session), **Month**, **Pincode**; on Run fetches activities via `get_activities.main(...)` then downloads via `get_uber_receipts.main(...)` with live progress; PDF preview for files in the device `uber_receipts` folder
 - **Ingest Rapido Receipts** (`pages/2_Ingest_Rapido_Receipts.py`) — zip upload, shared **Pincode**; runs `ingest_rapido_receipts.main(...)`; PDF preview for kept receipts
 - **Optimize Receipts** (`pages/3_Optimize_Receipts.py`) — **Spend limit**; runs `optimize_receipts.main(...)`; PDF preview for kept receipts
