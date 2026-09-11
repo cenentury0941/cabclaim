@@ -11,11 +11,23 @@ TARGET_FIELD_INDEXES = (24, 25, 26)
 
 NEW_EXPENSE_FORM_QUERY = """
 query GetNewExpenseEntry(
+  $reportId: String!
+  $userId: String!
   $reportIdAsID: ID!
   $userIdAsID: ID!
   $expenseTypeId: ID!
   $contextRole: ContextRoleType!
 ) {
+  employee(userId: $userId, contextRole: $contextRole) {
+    expenseReport(reportId: $reportId) {
+      reportDetails {
+        policy {
+          id
+          expenseListDetailFormId
+        }
+      }
+    }
+  }
   newExpenseForm(
     dataContext: {
       reportId: $reportIdAsID
@@ -52,18 +64,20 @@ def _cookies_from_header(cookie_header: str) -> dict[str, str]:
     return cookies
 
 
-def fetch_main_form_list_values(
+def fetch_concur_form_values(
     *,
     report_id: str,
     user_id: str,
     cookie_header: str,
-) -> list[dict[str, str]]:
-    """Return the listValue ID and value for mainForm fields 24 through 26."""
+) -> dict:
+    """Return org-unit list values plus policy IDs from GetNewExpenseEntry."""
     payload = {
         "operationName": "GetNewExpenseEntry",
         "variables": {
             "contextRole": "TRAVELER",
+            "userId": user_id,
             "userIdAsID": user_id,
+            "reportId": report_id,
             "reportIdAsID": report_id,
             "expenseTypeId": "01102",
         },
@@ -95,9 +109,19 @@ def fetch_main_form_list_values(
         raise RuntimeError(messages)
 
     try:
+        policy = result["data"]["employee"]["expenseReport"]["reportDetails"]["policy"]
         fields = result["data"]["newExpenseForm"]["mainForm"]["fields"]
     except (KeyError, TypeError) as exc:
-        raise RuntimeError("Concur response did not include mainForm fields.") from exc
+        raise RuntimeError(
+            "Concur response did not include policy or mainForm fields."
+        ) from exc
+
+    policy_id = (policy or {}).get("id") or ""
+    expense_list_detail_form_id = (policy or {}).get("expenseListDetailFormId") or ""
+    if not policy_id or not expense_list_detail_form_id:
+        raise RuntimeError(
+            "Concur policy did not include id and expenseListDetailFormId."
+        )
 
     if len(fields) <= TARGET_FIELD_INDEXES[-1]:
         raise RuntimeError(
@@ -121,4 +145,8 @@ def fetch_main_form_list_values(
             "value": list_value.get("value") or "",
         })
 
-    return values
+    return {
+        "fields": values,
+        "policy_id": policy_id,
+        "expense_list_detail_form_id": expense_list_detail_form_id,
+    }

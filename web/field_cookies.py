@@ -12,6 +12,7 @@ import streamlit as st
 FIELD_COOKIE_NAMES: dict[str, str] = {
     "concur_report_id": "cc_concur_rid",
     "concur_user_id": "cc_concur_uid",
+    "concur_location_id": "cc_concur_loc",
 }
 
 # Previously persisted header cookies; cleared when we next write field cookies.

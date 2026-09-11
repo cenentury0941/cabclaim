@@ -9,7 +9,7 @@ import streamlit as st
 
 import upload_rapido_to_concur
 import upload_uber_to_concur
-from web.concur_form import fetch_main_form_list_values
+from web.concur_form import fetch_concur_form_values
 from web.field_cookies import hydrate_text_fields, mark_field_dirty, persist_dirty_fields
 from web.page_consent import require_page_consent
 from web.pdf_preview import list_pdfs
@@ -25,14 +25,25 @@ paths = workspace_paths()
 UBER_FOLDER = paths.uber_receipts
 RAPIDO_FOLDER = paths.rapido_receipts
 
+# Concur location list (id → preferredDisplay) for expense locationId.
+CONCUR_LOCATIONS: dict[str, str] = {
+    "B40D3324AD004966804DDC2B2B160CCF": "Chennai (Ex Madras), INDIA",
+    "9060EA8CAE3D411CB92C755DF1F3FDAD": "Hyderabad, INDIA",
+    "FE8D20F79A204BA7B2E1B492FDEF3C51": "Bangalore, INDIA",
+    "5CC920A84A43436AB5E8EB84F8FF41F3": "Coimbatore, INDIA",
+}
+DEFAULT_LOCATION_ID = "B40D3324AD004966804DDC2B2B160CCF"
+
 st.title("Upload Receipts")
 st.write(
     "Upload optimized receipt PDFs to Concur as expense entries. "
     "Configure shared Concur settings below, then run Uber or Rapido upload separately."
 )
 
-hydrate_text_fields("concur_report_id", "concur_user_id")
+hydrate_text_fields("concur_report_id", "concur_user_id", "concur_location_id")
 ensure_ephemeral_text("concur_cookie_header")
+if st.session_state.get("concur_location_id") not in CONCUR_LOCATIONS:
+    st.session_state["concur_location_id"] = DEFAULT_LOCATION_ID
 
 st.subheader("Concur settings")
 
@@ -52,6 +63,15 @@ with col_user:
         args=("concur_user_id",),
     )
 
+st.selectbox(
+    "Location",
+    options=list(CONCUR_LOCATIONS.keys()),
+    format_func=lambda loc_id: CONCUR_LOCATIONS[loc_id],
+    key="concur_location_id",
+    on_change=mark_field_dirty,
+    args=("concur_location_id",),
+)
+
 st.text_area(
     "Concur Cookie Header",
     key="concur_cookie_header",
@@ -67,6 +87,7 @@ def _shared_kwargs() -> dict:
         "report_id": (st.session_state.get("concur_report_id") or "").strip(),
         "user_id": (st.session_state.get("concur_user_id") or "").strip(),
         "cookie_header": (st.session_state.get("concur_cookie_header") or "").strip(),
+        "location_id": st.session_state.get("concur_location_id") or DEFAULT_LOCATION_ID,
     }
 
 
@@ -78,10 +99,12 @@ def _validate_concur_settings() -> str | None:
         return "User ID is empty."
     if not kwargs["cookie_header"]:
         return "Concur Cookie Header is empty."
+    if kwargs["location_id"] not in CONCUR_LOCATIONS:
+        return "Location is invalid."
     return None
 
 
-def _org_unit_kwargs() -> dict[str, str]:
+def _form_inject_kwargs() -> dict[str, str]:
     values_by_field = {
         field["field_id"]: field["id"]
         for field in st.session_state.get("concur_main_form_values", [])
@@ -90,10 +113,14 @@ def _org_unit_kwargs() -> dict[str, str]:
         "org_unit1_id": values_by_field.get("orgUnit1", ""),
         "org_unit2_id": values_by_field.get("orgUnit2", ""),
         "org_unit3_id": values_by_field.get("orgUnit3", ""),
+        "policy_id": st.session_state.get("concur_policy_id") or "",
+        "expense_list_detail_form_id": (
+            st.session_state.get("concur_expense_list_detail_form_id") or ""
+        ),
     }
 
 
-def _validate_org_unit_values() -> str | None:
+def _validate_form_inject_values() -> str | None:
     context = st.session_state.get("concur_main_form_context")
     settings = _shared_kwargs()
     if context != {
@@ -101,15 +128,28 @@ def _validate_org_unit_values() -> str | None:
         "user_id": settings["user_id"],
     }:
         return "Fetch the Concur form values for the current Report ID and User ID."
-    if not all(_org_unit_kwargs().values()):
-        return "Concur form values must include IDs for orgUnit1, orgUnit2, and orgUnit3."
+    injected = _form_inject_kwargs()
+    if not all(
+        injected[key]
+        for key in (
+            "org_unit1_id",
+            "org_unit2_id",
+            "org_unit3_id",
+            "policy_id",
+            "expense_list_detail_form_id",
+        )
+    ):
+        return (
+            "Concur form values must include IDs for orgUnit1–3, policyId, "
+            "and expenseListDetailFormId."
+        )
     return None
 
 
 def _render_concur_form_values() -> None:
     st.subheader("Concur form values")
     st.caption(
-        "Fetch the current list values for mainForm fields 24, 25, and 26."
+        "Fetch policy IDs and the current list values for mainForm fields 24, 25, and 26."
     )
 
     if st.button("Fetch form values", key="fetch_concur_form_values"):
@@ -119,19 +159,51 @@ def _render_concur_form_values() -> None:
         else:
             st.session_state.pop("concur_main_form_values", None)
             st.session_state.pop("concur_main_form_context", None)
+            st.session_state.pop("concur_policy_id", None)
+            st.session_state.pop("concur_expense_list_detail_form_id", None)
             try:
                 with st.spinner("Fetching form values from Concur…"):
-                    values = fetch_main_form_list_values(**_shared_kwargs())
+                    settings = _shared_kwargs()
+                    fetched = fetch_concur_form_values(
+                        report_id=settings["report_id"],
+                        user_id=settings["user_id"],
+                        cookie_header=settings["cookie_header"],
+                    )
             except Exception as exc:
                 st.error(f"Could not fetch Concur form values: {exc}")
             else:
-                settings = _shared_kwargs()
-                st.session_state["concur_main_form_values"] = values
+                st.session_state["concur_main_form_values"] = fetched["fields"]
+                st.session_state["concur_policy_id"] = fetched["policy_id"]
+                st.session_state["concur_expense_list_detail_form_id"] = fetched[
+                    "expense_list_detail_form_id"
+                ]
                 st.session_state["concur_main_form_context"] = {
                     "report_id": settings["report_id"],
                     "user_id": settings["user_id"],
                 }
                 st.success("Concur form values fetched.")
+
+    policy_id = st.session_state.get("concur_policy_id")
+    form_id = st.session_state.get("concur_expense_list_detail_form_id")
+    if policy_id or form_id:
+        st.markdown("**Policy**")
+        policy_col, form_col = st.columns(2)
+        st.session_state["concur_form_policy_id_display"] = policy_id or ""
+        st.session_state["concur_form_expense_list_detail_form_id_display"] = (
+            form_id or ""
+        )
+        with policy_col:
+            st.text_input(
+                "policyId",
+                key="concur_form_policy_id_display",
+                disabled=True,
+            )
+        with form_col:
+            st.text_input(
+                "expenseListDetailFormId",
+                key="concur_form_expense_list_detail_form_id_display",
+                disabled=True,
+            )
 
     for field in st.session_state.get("concur_main_form_values", []):
         st.markdown(
@@ -197,7 +269,7 @@ def _run_upload_section(
     if error:
         st.error(error)
         return
-    error = _validate_org_unit_values()
+    error = _validate_form_inject_values()
     if error:
         st.error(error)
         return
@@ -263,7 +335,7 @@ def _run_upload_section(
     ok, log = run_streaming(
         lambda: upload_main(
             **_shared_kwargs(),
-            **_org_unit_kwargs(),
+            **_form_inject_kwargs(),
             pdf_folder=str(folder),
             on_progress=on_progress,
         ),

@@ -657,6 +657,11 @@ def load_cookies(filename):
         return load_cookies_from_text(f.read())
 
 
+DEFAULT_LOCATION_ID = "B40D3324AD004966804DDC2B2B160CCF"  # Chennai (Ex Madras)
+DEFAULT_POLICY_ID = "B94B849FD70E6F40BA689080712256F1"
+DEFAULT_EXPENSE_LIST_DETAIL_FORM_ID = "A6BBECA62B9240258230320AE93D100D"
+
+
 def main(
     report_id=None,
     user_id=None,
@@ -665,9 +670,12 @@ def main(
     business_purpose=None,
     vendor_name=None,
     pdf_folder=None,
+    location_id=None,
     org_unit1_id=None,
     org_unit2_id=None,
     org_unit3_id=None,
+    policy_id=None,
+    expense_list_detail_form_id=None,
     on_progress=None,
 ):
     report_id = report_id or REPORT_ID
@@ -675,9 +683,14 @@ def main(
     business_purpose = business_purpose or BUSINESS_PURPOSE
     vendor_name = vendor_name or VENDOR_NAME
     pdf_folder = pdf_folder or PDF_FOLDER
+    location_id = location_id or DEFAULT_LOCATION_ID
     org_unit1_id = org_unit1_id or "F3362811FBEBAA4495F3C72ED5BA15C4"
     org_unit2_id = org_unit2_id or "084AAD620A5EFB429E759B6E4165E57B"
     org_unit3_id = org_unit3_id or "46AEE5457FA8664F9B5CFB508CF8FDA6"
+    policy_id = policy_id or DEFAULT_POLICY_ID
+    expense_list_detail_form_id = (
+        expense_list_detail_form_id or DEFAULT_EXPENSE_LIST_DETAIL_FORM_ID
+    )
 
     if cookie_header:
         cookies = load_cookies_from_text(cookie_header)
@@ -793,7 +806,7 @@ def main(
                 "transactionDate": transaction_date,
                 "businessPurpose": business_purpose,
                 "vendorName": vendor_name,
-                "locationId": "B40D3324AD004966804DDC2B2B160CCF", # City
+                "locationId": location_id,
                 "paymentTypeId": "COPD",
                 "transactionAmount": {
                     "value": fare.quantize(Decimal("0.01")),
@@ -823,8 +836,8 @@ def main(
                 "receiptImageId": receipt_image_id,
             },
             "expenseTypeId": "01102",
-            "policyId": "B94B849FD70E6F40BA689080712256F1",
-            "expenseListDetailFormId": "A6BBECA62B9240258230320AE93D100D",
+            "policyId": policy_id,
+            "expenseListDetailFormId": expense_list_detail_form_id,
         }
 
         payload = {
